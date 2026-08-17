@@ -69,17 +69,20 @@
         <button class="nav-item" data-tab="readings">
           <span class="nav-eyebrow">02</span> Daily Readings
         </button>
+        <button class="nav-item" data-tab="devotional">
+          <span class="nav-eyebrow">03</span> Devotional
+        </button>
         <button class="nav-item" data-tab="guides">
-          <span class="nav-eyebrow">03</span> Study Guides
+          <span class="nav-eyebrow">04</span> Study Guides
         </button>
         <button class="nav-item" data-tab="ideas">
-          <span class="nav-eyebrow">04</span> Ideas Board
+          <span class="nav-eyebrow">05</span> Ideas Board
         </button>
         <button class="nav-item" data-tab="homework">
-          <span class="nav-eyebrow">05</span> Homework
+          <span class="nav-eyebrow">06</span> Homework
         </button>
         <button class="nav-item" data-tab="calendar">
-          <span class="nav-eyebrow">06</span> Calendar
+          <span class="nav-eyebrow">07</span> Calendar
         </button>
       </nav>
     </div>
@@ -143,19 +146,33 @@
         <div>
           <div class="panel-eyebrow">02 — Daily Readings</div>
           <h2>Today's Mass Readings</h2>
-          <p class="panel-desc">Official readings for daily Mass, from the USCCB — the U.S. Bishops' own daily readings page. Read along together, or on your own before you gather.</p>
+          <p class="panel-desc">The day's citations come straight from the USCCB. The passage text below is a public-domain translation (World English Bible) — not the exact wording read at Mass, so we link out to the official NAB text too.</p>
         </div>
       </header>
 
       <div class="reading-hero">
         <div class="reading-date" id="readingsDate">—</div>
         <div class="reading-season" id="readingsSeason">—</div>
-        <a class="btn btn-primary btn-lg" id="readingsLink" href="#" target="_blank" rel="noopener">Open Today's Readings at USCCB.org →</a>
       </div>
 
-      <div class="reading-grid">
-        <a class="reading-alt" id="readingsYesterday" href="#" target="_blank" rel="noopener">← Yesterday's readings</a>
-        <a class="reading-alt" id="readingsTomorrow" href="#" target="_blank" rel="noopener">Tomorrow's readings →</a>
+      <div id="readingsBody" class="stack"></div>
+
+      <div class="reading-footer">
+        <a class="btn btn-ghost" id="readingsLink" href="#" target="_blank" rel="noopener">View official NAB text at USCCB.org →</a>
+      </div>
+    </section>
+
+    <!-- DEVOTIONAL -->
+    <section class="panel" id="panel-devotional">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">03 — Devotional</div>
+          <h2>Today's Devotional</h2>
+          <p class="panel-desc">A short daily word for the group — one Scripture, one reflection, one challenge to actually act on today.</p>
+        </div>
+      </header>
+      <div id="devotionalBody" class="stack">
+        <div class="empty-state">Loading today's devotional…</div>
       </div>
     </section>
 
@@ -163,7 +180,7 @@
     <section class="panel" id="panel-guides">
       <header class="panel-head">
         <div>
-          <div class="panel-eyebrow">03 — Study Guides</div>
+          <div class="panel-eyebrow">04 — Study Guides</div>
           <h2>Study Guides</h2>
           <p class="panel-desc">Every guide your group has used, plus a generator to build your next one — pulling in ideas the group has already suggested.</p>
         </div>
@@ -196,7 +213,7 @@
     <section class="panel" id="panel-ideas">
       <header class="panel-head">
         <div>
-          <div class="panel-eyebrow">04 — Ideas Board</div>
+          <div class="panel-eyebrow">05 — Ideas Board</div>
           <h2>What should we study next?</h2>
           <p class="panel-desc">Suggest a topic, book, or passage. Vote on the ones you're excited about — the top ideas feed straight into the guide generator.</p>
         </div>
@@ -218,7 +235,7 @@
     <section class="panel" id="panel-homework">
       <header class="panel-head">
         <div>
-          <div class="panel-eyebrow">05 — Homework</div>
+          <div class="panel-eyebrow">06 — Homework</div>
           <h2>Homework &amp; Discussion</h2>
           <p class="panel-desc">Post a few questions for the group. Everyone answers in a short synopsis — aim for about 3–5 minutes' worth of thought, nothing longer.</p>
         </div>
@@ -249,7 +266,7 @@
     <section class="panel" id="panel-calendar">
       <header class="panel-head">
         <div>
-          <div class="panel-eyebrow">06 — Calendar</div>
+          <div class="panel-eyebrow">07 — Calendar</div>
           <h2>Calendar</h2>
           <p class="panel-desc">Solemnities, feast days, and holy days of obligation from the Church calendar, alongside your group's own gatherings.</p>
         </div>

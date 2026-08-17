@@ -128,7 +128,9 @@ async function enterApp() {
   gateEl.classList.add('hidden');
   appRootEl.classList.remove('hidden');
   renderWhoAmI();
-  renderHeroAndReadings();
+  renderHeroDate();
+  loadReadings();
+  loadDevotional();
   loadGuides();
   loadIdeas();
   loadHomework();
@@ -162,7 +164,7 @@ sb.auth.getSession().then(({ data }) => handleSession(data.session));
 // ============================================================
 // Tab navigation
 // ============================================================
-const tabs = ['home', 'readings', 'guides', 'ideas', 'homework', 'calendar'];
+const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'homework', 'calendar'];
 function gotoTab(tab) {
   tabs.forEach(t => {
     document.getElementById(`panel-${t}`).classList.toggle('is-active', t === tab);
@@ -313,7 +315,7 @@ function uscbbUrl(date) {
   return `https://bible.usccb.org/bible/readings/${mm}${dd}${yy}.cfm`;
 }
 
-function renderHeroAndReadings() {
+function renderHeroDate() {
   const today = new Date();
   const info = liturgicalInfo(today);
   document.documentElement.style.setProperty('--season', info.color);
@@ -331,12 +333,82 @@ function renderHeroAndReadings() {
   const url = uscbbUrl(today);
   document.getElementById('heroReadingsBtn').href = url;
 
-  // Readings tab
   document.getElementById('readingsDate').textContent = dateStr;
   document.getElementById('readingsSeason').textContent = info.season + (feasts.length ? ' · ' + feasts.map(f => f.name).join(', ') : '');
-  document.getElementById('readingsLink').href = url;
-  document.getElementById('readingsYesterday').href = uscbbUrl(addDays(today, -1));
-  document.getElementById('readingsTomorrow').href = uscbbUrl(addDays(today, 1));
+}
+
+// ============================================================
+// Daily Readings (citations from USCCB, text from a public-domain translation)
+// ============================================================
+async function loadReadings() {
+  const bodyEl = document.getElementById('readingsBody');
+  bodyEl.innerHTML = `<div class="empty-state">Loading today's readings…</div>`;
+  const today = new Date();
+  const mmddyy = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${String(today.getFullYear()).slice(-2)}`;
+  document.getElementById('readingsLink').href = uscbbUrl(today);
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`/.netlify/functions/daily-readings?date=${mmddyy}`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.sections || !data.sections.length) {
+      bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings. Use the link below to read them at USCCB.org.</div>`;
+      return;
+    }
+    bodyEl.innerHTML = data.sections.map(s => `
+      <div class="reading-section-card">
+        <div class="reading-section-head">
+          <h4>${escapeHtml(s.label)}</h4>
+          <span class="reading-citation">${escapeHtml(s.citation)}</span>
+        </div>
+        <p class="reading-text">${s.text ? escapeHtml(s.text) : 'Text unavailable for this translation — see the official reading at USCCB.org.'}</p>
+      </div>`).join('');
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings. Use the link below to read them at USCCB.org.</div>`;
+  }
+}
+
+// ============================================================
+// Daily Devotional
+// ============================================================
+async function loadDevotional() {
+  const bodyEl = document.getElementById('devotionalBody');
+  bodyEl.innerHTML = `<div class="empty-state">Loading today's devotional…</div>`;
+  const today = new Date();
+  const dateKeyStr = ymd(today);
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch('/.netlify/functions/daily-devotional', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`
+      },
+      body: JSON.stringify({ date: dateKeyStr })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 501 || data.code === 'NOT_CONFIGURED') {
+        bodyEl.innerHTML = `<div class="empty-state">The devotional generator isn't set up yet — the group admin needs to add an Anthropic API key.</div>`;
+        return;
+      }
+      throw new Error(data.error || 'Could not load devotional.');
+    }
+    bodyEl.innerHTML = `
+      <div class="devo-card">
+        <div class="devo-title">${escapeHtml(data.title)}</div>
+        ${data.citation ? `<div class="guide-meta">${escapeHtml(data.citation)}</div>` : ''}
+        ${data.scripture_text ? `<blockquote class="devo-scripture">${escapeHtml(data.scripture_text)}</blockquote>` : ''}
+        <div class="guide-section"><h4>Reflection</h4><p>${escapeHtml(data.reflection).replace(/\n+/g, '</p><p>')}</p></div>
+        <div class="guide-section"><h4>Today's Challenge</h4><p>${escapeHtml(data.challenge)}</p></div>
+        <div class="guide-section"><h4>Closing Prayer</h4><p>${escapeHtml(data.closing_prayer)}</p></div>
+      </div>`;
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="empty-state">${escapeHtml(e.message || "Couldn't load today's devotional.")}</div>`;
+  }
 }
 
 // ============================================================

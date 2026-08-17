@@ -202,6 +202,21 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--paper-raised);
 }
 .reading-alt:hover { background: var(--season-soft); color: var(--ink); }
+.reading-footer { margin-top: 8px; }
+.reading-section-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; }
+.reading-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.reading-section-head h4 { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; }
+.reading-citation { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.04em; }
+.reading-text { font-size: 15px; line-height: 1.7; margin: 0; color: var(--ink); }
+
+/* Devotional */
+.devo-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px; padding: 24px 26px; }
+.devo-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+.devo-scripture {
+  margin: 16px 0; padding: 14px 18px; border-left: 3px solid var(--season);
+  background: var(--season-soft); border-radius: 0 8px 8px 0;
+  font-family: 'Fraunces', serif; font-style: italic; font-size: 15.5px; line-height: 1.6;
+}
 
 /* Composer / forms */
 .composer {
