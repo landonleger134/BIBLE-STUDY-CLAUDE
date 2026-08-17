@@ -555,11 +555,11 @@ function guideCardHtml(g) {
 
   let bodyHtml;
   if (sections.length) {
-    // Richer imported guides: render each section as-is, in original order.
+    // Richer imported guides: sections carry real HTML (bold/italic/lists/quotes preserved from the source doc).
     bodyHtml = sections.map(s => `
       <div class="guide-section">
         <h4>${escapeHtml(s.heading || '')}</h4>
-        ${formatGuideText(s.body || '')}
+        ${s.body || ''}
       </div>
     `).join('');
   } else {
@@ -599,7 +599,7 @@ function printGuide(g) {
     sectionsHtml = sections.map(s => `
       <div class="print-section">
         <h3>${escapeHtml(s.heading || '')}</h3>
-        ${formatGuideText(s.body || '')}
+        ${s.body || ''}
       </div>
     `).join('');
   } else {
@@ -624,8 +624,13 @@ function printGuide(g) {
   .meta { font-family: monospace; font-size: 12px; color: #666; margin-bottom: 28px; }
   h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #8a6d1f; margin: 22px 0 6px; }
   p { font-size: 14.5px; margin: 0 0 10px; }
-  ol { font-size: 14.5px; padding-left: 20px; }
+  ol, ul { font-size: 14.5px; padding-left: 22px; margin: 0 0 10px; }
   li { margin-bottom: 6px; }
+  li p { margin: 0; }
+  em { font-style: italic; }
+  strong { font-weight: 700; }
+  blockquote { margin: 10px 0; padding: 4px 16px; border-left: 3px solid #c9a227; color: #444; }
+  blockquote p { margin: 0 0 4px; }
   .leader-tip { font-style: italic; color: #555; border-left: 3px solid #c9a227; padding: 6px 12px; margin: 10px 0; background: #faf6ea; }
   @media print { body { margin: 0; padding: 24px; } }
 </style>
@@ -728,24 +733,41 @@ document.getElementById('saveUploadedGuideBtn').addEventListener('click', async 
   }
 });
 
-// Parses mammoth's HTML output into { title, scriptureRef, sections }.
+// Parses mammoth's HTML output into { title, scriptureRef, sections }, keeping real
+// bold/italic/list/quote formatting from the source doc intact (not flattened to plain text).
 // Heuristic mirrors the format used across this group's existing guides:
 // two bold lines at the top (a label, then the real title), a "Passage:" line,
-// then the body split into sections wherever a short fully-bold line appears.
+// then the body split into sections wherever a short fully-bold-only line appears.
+const GUIDE_ALLOWED_TAGS = new Set(['P', 'STRONG', 'EM', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'BR']);
+
+function sanitizeGuideEl(el) {
+  el.querySelectorAll('*').forEach(node => {
+    while (node.attributes.length) node.removeAttribute(node.attributes[0].name);
+    if (!GUIDE_ALLOWED_TAGS.has(node.tagName)) {
+      // unwrap: replace node with its children
+      const parent = node.parentNode;
+      while (node.firstChild) parent.insertBefore(node.firstChild, node);
+      parent.removeChild(node);
+    }
+  });
+  return el;
+}
+
 function parseGuideHtml(html) {
   const container = document.createElement('div');
   container.innerHTML = html;
-  const blocks = Array.from(container.children).filter(el => /^(P|H1|H2|H3|H4)$/.test(el.tagName));
+  const blocks = Array.from(container.children).filter(el => /^(P|BLOCKQUOTE|UL|OL|H1|H2|H3|H4)$/.test(el.tagName));
 
   function textOf(el) { return el.textContent.replace(/\s+/g, ' ').trim(); }
-  function isFullyBold(el) {
-    const text = textOf(el);
-    if (!text) return false;
+  function isHeading(el) {
+    if (el.tagName !== 'P') return false;
+    if (el.querySelector('em')) return false;
     const strongs = el.querySelectorAll('strong');
     if (!strongs.length) return false;
     let strongText = '';
     strongs.forEach(s => strongText += s.textContent);
-    return strongText.replace(/\s+/g, ' ').trim() === text;
+    const text = textOf(el);
+    return strongText.replace(/\s+/g, ' ').trim() === text && text.length > 0 && text.length <= 70;
   }
 
   let header = null, title = null, scriptureRef = '';
@@ -754,16 +776,17 @@ function parseGuideHtml(html) {
   let bodyStart = 0;
 
   for (let i = 0; i < blocks.length; i++) {
+    if (blocks[i].tagName !== 'P') { bodyStart = i; break; }
     const text = textOf(blocks[i]);
     if (!text) { consumed.add(i); continue; }
 
     const passageMatch = text.match(/^Passage:?\s*(.+)$/i);
     if (passageMatch) {
-      scriptureRef = passageMatch[1].replace(/[·|]|~?\d+[\u2013-]\d+\s*min.*$/i, '').trim();
+      scriptureRef = passageMatch[1].replace(/\s*[·|].*$/, '').trim();
       consumed.add(i);
       continue;
     }
-    if (isFullyBold(blocks[i]) && boldCount < 2) {
+    if (isHeading(blocks[i]) && boldCount < 2) {
       if (boldCount === 0) header = text; else title = text;
       boldCount++;
       consumed.add(i);
@@ -776,42 +799,29 @@ function parseGuideHtml(html) {
 
   const sections = [];
   let currentHeading = null;
-  let currentLines = [];
-  let prevWasListItem = null;
+  let currentParts = [];
 
   function pushSection() {
-    if (currentHeading === null && !currentLines.length) return;
-    const body = currentLines.join('').trim();
-    if (body || currentHeading) sections.push({ heading: currentHeading || 'Intro', body });
+    if (currentHeading === null && !currentParts.length) return;
+    const bodyHtml = currentParts.map(el => sanitizeGuideEl(el).outerHTML).join('').trim();
+    if (bodyHtml || currentHeading) sections.push({ heading: currentHeading || 'Intro', body: bodyHtml });
   }
 
   for (let i = bodyStart; i < blocks.length; i++) {
     if (consumed.has(i)) continue;
     const el = blocks[i];
-    const text = textOf(el);
-    if (!text) continue;
-
-    if (isFullyBold(el) && text.length <= 70) {
+    if (isHeading(el)) {
       pushSection();
-      currentHeading = text;
-      currentLines = [];
-      prevWasListItem = null;
-      continue;
-    }
-
-    const isListItem = /^\d+\.\s/.test(text);
-    if (currentLines.length === 0) {
-      currentLines.push(text);
-    } else if (isListItem === prevWasListItem) {
-      currentLines.push('\n' + text);
+      currentHeading = textOf(el);
+      currentParts = [];
     } else {
-      currentLines.push('\n\n' + text);
+      currentParts.push(el);
     }
-    prevWasListItem = isListItem;
   }
   pushSection();
 
-  return { title, scriptureRef, sections };
+  const filtered = sections.filter(s => !(s.heading === 'Intro' && s.body.length < 20));
+  return { title, scriptureRef, sections: filtered };
 }
 
 // ============================================================
@@ -892,7 +902,8 @@ document.getElementById('saveHomeworkBtn').addEventListener('click', async () =>
   const dueDate = document.getElementById('hwDueDate').value || null;
   if (!title || !questionsRaw) { toast('Add a title and at least one question.', true); return; }
   if (!currentProfile) return;
-  const questions = questionsRaw.split('\n').map(q => q.trim()).filter(Boolean);
+  const questions = questionsRaw.split('\n').map(q => q.trim()).filter(Boolean)
+    .map(text => ({ text, category: null, assignedTo: '' }));
 
   const { error } = await sb.from('homework_sessions').insert({
     title, questions, due_date: dueDate,
@@ -908,10 +919,18 @@ document.getElementById('saveHomeworkBtn').addEventListener('click', async () =>
   loadHomework();
 });
 
+let loadedHomeworkSessions = [];
+
+function normalizeHwQuestion(q) {
+  if (typeof q === 'string') return { text: q, category: null, assignedTo: '' };
+  return { text: q.text || '', category: q.category || null, assignedTo: q.assignedTo || '' };
+}
+
 async function loadHomework() {
   const listEl = document.getElementById('homeworkList');
   const { data: sessions, error } = await sb.from('homework_sessions').select('*').order('created_at', { ascending: false });
   if (error) { listEl.innerHTML = `<div class="empty-state">Couldn't load homework.</div>`; return; }
+  loadedHomeworkSessions = sessions || [];
   if (!sessions || !sessions.length) {
     listEl.innerHTML = `<div class="empty-state">No homework posted yet.</div>`;
     updateHomeHomeworkCard(null, []);
@@ -946,6 +965,21 @@ async function loadHomework() {
       loadHomework();
     });
   });
+
+  listEl.querySelectorAll('.hw-assign-input').forEach(input => {
+    input.addEventListener('change', async () => {
+      const sessionId = input.dataset.session;
+      const qIdx = Number(input.dataset.qindex);
+      const session = loadedHomeworkSessions.find(s => s.id === sessionId);
+      if (!session) return;
+      const questions = (Array.isArray(session.questions) ? session.questions : []).map(normalizeHwQuestion);
+      questions[qIdx] = { ...questions[qIdx], assignedTo: input.value.trim() };
+      const { error } = await sb.from('homework_sessions').update({ questions }).eq('id', sessionId);
+      if (error) { toast('Could not save assignment.', true); return; }
+      session.questions = questions;
+      toast('Assignment saved.');
+    });
+  });
 }
 function homeworkCardHtml(s, answers) {
   const due = s.due_date ? new Date(s.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
@@ -958,11 +992,18 @@ function homeworkCardHtml(s, answers) {
         <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''}</div>
       </div>
     </div>
-    ${questions.map((q, idx) => {
+    ${questions.map((qRaw, idx) => {
+      const q = normalizeHwQuestion(qRaw);
       const qAnswers = answers.filter(a => a.question_index === idx);
       return `
       <div class="hw-question">
-        <div class="hw-question-text">${idx + 1}. ${escapeHtml(q)}</div>
+        <div class="hw-question-head">
+          <div class="hw-question-text">${idx + 1}. ${escapeHtml(q.text)}</div>
+          ${q.category ? `<span class="hw-category">${escapeHtml(q.category)}</span>` : ''}
+        </div>
+        <label class="hw-assign-row">Assigned to
+          <input type="text" class="hw-assign-input" data-session="${s.id}" data-qindex="${idx}" value="${escapeHtml(q.assignedTo)}" placeholder="Name">
+        </label>
         <div class="hw-answers">
           ${qAnswers.length ? qAnswers.map(a => `
             <div class="hw-answer">
