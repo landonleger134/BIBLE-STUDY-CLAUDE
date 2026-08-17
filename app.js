@@ -1557,14 +1557,15 @@ async function loadContacts() {
     document.getElementById('myPhoneInput').value = currentProfile.phone || '';
   }
 
-  const others = (data || []).filter(p => p.id !== currentProfile?.id);
-  if (!others.length) {
-    listEl.innerHTML = `<div class="empty-state">No one else has joined yet.</div>`;
+  const myId = currentProfile?.id;
+  const all = data || [];
+  if (!all.length) {
+    listEl.innerHTML = `<div class="empty-state">No one's joined yet.</div>`;
     return;
   }
-  listEl.innerHTML = others.map(p => `
+  listEl.innerHTML = all.map(p => `
     <div class="contact-card">
-      <div class="contact-name">${escapeHtml(p.display_name)}</div>
+      <div class="contact-name">${escapeHtml(p.display_name)}${p.id === myId ? ' <span class="contact-you-tag">(You)</span>' : ''}</div>
       ${p.phone
         ? `<a class="contact-phone" href="tel:${escapeHtml(p.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(p.phone)}</a>`
         : `<span class="contact-phone-missing">No number shared yet</span>`}
