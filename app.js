@@ -382,13 +382,23 @@ async function loadReadings() {
   document.getElementById('readingsLink').href = uscbbUrl(today);
 
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session }, error: sessionErr } = await sb.auth.getSession();
+    if (sessionErr || !session) {
+      bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings — your sign-in session wasn't found (${escapeHtml(sessionErr?.message || 'no session')}). Try signing out and back in. Use the link below in the meantime.</div>`;
+      return;
+    }
     const res = await fetch(`/.netlify/functions/daily-readings?date=${mmddyy}`, {
-      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
     });
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings (server returned an unexpected response, status ${res.status}). Use the link below to read them at USCCB.org.</div>`;
+      return;
+    }
     if (!res.ok || !data.sections || !data.sections.length) {
-      bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings. Use the link below to read them at USCCB.org.</div>`;
+      bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings (status ${res.status}${data?.error ? ': ' + escapeHtml(data.error) : ''}). Use the link below to read them at USCCB.org.</div>`;
       return;
     }
     bodyEl.innerHTML = data.sections.map(s => `
@@ -400,7 +410,7 @@ async function loadReadings() {
         <p class="reading-text">${s.text ? escapeHtml(s.text) : 'Text unavailable for this translation — see the official reading at USCCB.org.'}</p>
       </div>`).join('');
   } catch (e) {
-    bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings. Use the link below to read them at USCCB.org.</div>`;
+    bodyEl.innerHTML = `<div class="empty-state">Couldn't load today's readings (${escapeHtml(e.message || 'network error')}). Use the link below to read them at USCCB.org.</div>`;
   }
 }
 
