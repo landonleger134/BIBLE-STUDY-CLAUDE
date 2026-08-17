@@ -144,6 +144,7 @@ async function enterApp() {
   loadHomework();
   loadCalendarEvents();
   loadPhotos();
+  loadContacts();
 }
 
 async function handleSession(session) {
@@ -173,7 +174,7 @@ sb.auth.getSession().then(({ data }) => handleSession(data.session));
 // ============================================================
 // Tab navigation
 // ============================================================
-const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos'];
+const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos', 'contacts'];
 function gotoTab(tab) {
   tabs.forEach(t => {
     document.getElementById(`panel-${t}`).classList.toggle('is-active', t === tab);
@@ -1525,6 +1526,49 @@ async function deletePhoto(id, path) {
   if (error) { toast('Could not delete photo.', true); return; }
   toast('Photo removed.');
   loadPhotos();
+}
+
+// ============================================================
+// Contacts
+// ============================================================
+document.getElementById('savePhoneBtn').addEventListener('click', async () => {
+  if (!currentProfile) return;
+  const phone = document.getElementById('myPhoneInput').value.trim();
+  const statusEl = document.getElementById('phoneSaveStatus');
+  const { error } = await sb.from('profiles').update({ phone: phone || null }).eq('id', currentProfile.id);
+  statusEl.classList.remove('hidden', 'error');
+  if (error) {
+    statusEl.textContent = 'Could not save. Try again.';
+    statusEl.classList.add('error');
+    return;
+  }
+  currentProfile.phone = phone || null;
+  statusEl.textContent = phone ? 'Saved!' : 'Removed.';
+  setTimeout(() => statusEl.classList.add('hidden'), 2000);
+  loadContacts();
+});
+
+async function loadContacts() {
+  const listEl = document.getElementById('contactsList');
+  const { data, error } = await sb.from('profiles').select('*').order('display_name', { ascending: true });
+  if (error) { listEl.innerHTML = `<div class="empty-state">Couldn't load contacts.</div>`; return; }
+
+  if (currentProfile) {
+    document.getElementById('myPhoneInput').value = currentProfile.phone || '';
+  }
+
+  const others = (data || []).filter(p => p.id !== currentProfile?.id);
+  if (!others.length) {
+    listEl.innerHTML = `<div class="empty-state">No one else has joined yet.</div>`;
+    return;
+  }
+  listEl.innerHTML = others.map(p => `
+    <div class="contact-card">
+      <div class="contact-name">${escapeHtml(p.display_name)}</div>
+      ${p.phone
+        ? `<a class="contact-phone" href="tel:${escapeHtml(p.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(p.phone)}</a>`
+        : `<span class="contact-phone-missing">No number shared yet</span>`}
+    </div>`).join('');
 }
 
 // ============================================================

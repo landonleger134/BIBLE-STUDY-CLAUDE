@@ -96,6 +96,9 @@
         <button class="nav-item" data-tab="photos">
           <span class="nav-eyebrow">09</span> Photos
         </button>
+        <button class="nav-item" data-tab="contacts">
+          <span class="nav-eyebrow">10</span> Contacts
+        </button>
       </nav>
     </div>
 
@@ -405,6 +408,29 @@
       </header>
       <div id="photoUploadStatus" class="status-msg hidden"></div>
       <div id="photoGrid" class="photo-grid"></div>
+    </section>
+
+    <!-- CONTACTS -->
+    <section class="panel" id="panel-contacts">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">10 — Contacts</div>
+          <h2>Contacts Hub</h2>
+          <p class="panel-desc">Share your cell number so the group can reach you. Only visible to signed-in members — you can edit or remove it any time.</p>
+        </div>
+      </header>
+
+      <div class="composer" id="myContactCard">
+        <label>Your phone number
+          <input type="tel" id="myPhoneInput" placeholder="e.g. (225) 555-0134">
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="savePhoneBtn">Save</button>
+        </div>
+        <div id="phoneSaveStatus" class="status-msg hidden"></div>
+      </div>
+
+      <div id="contactsList" class="stack"></div>
     </section>
 
   </main>
