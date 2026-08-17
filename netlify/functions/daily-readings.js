@@ -41,19 +41,6 @@ async function saveCache(isoDate, title, pageUrl, sections) {
   }
 }
 
-function extractSection(html, label) {
-  const headRe = new RegExp(`<h[23][^>]*>\\s*${label}\\s*<\\/h[23]>`, 'i');
-  const headMatch = headRe.exec(html);
-  if (!headMatch) return null;
-  const rest = html.slice(headMatch.index + headMatch[0].length, headMatch.index + headMatch[0].length + 2000);
-  const linkMatch = /<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i.exec(rest);
-  if (!linkMatch) return null;
-  return {
-    citation: linkMatch[2].trim().replace(/\s+/g, ' '),
-    usccbUrl: linkMatch[1].startsWith('http') ? linkMatch[1] : `https://bible.usccb.org${linkMatch[1]}`
-  };
-}
-
 async function fetchPublicDomainText(citation) {
   if (!citation) return null;
   try {
@@ -68,24 +55,77 @@ async function fetchPublicDomainText(citation) {
   }
 }
 
+const SECTION_LABELS = ['Reading 1', 'Reading 2', 'Responsorial Psalm', 'Alleluia', 'Gospel'];
+
+// --- Direct HTML fetch/parse (works when USCCB isn't blocking the request) ---
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
-async function fetchUsccbPage(pageUrl, attempt = 1) {
-  try {
-    const res = await fetch(pageUrl, { headers: BROWSER_HEADERS });
-    if (!res.ok) throw new Error(`USCCB fetch failed: ${res.status}`);
-    return await res.text();
-  } catch (err) {
-    if (attempt < 2) {
-      await new Promise(r => setTimeout(r, 600));
-      return fetchUsccbPage(pageUrl, attempt + 1);
-    }
-    throw err;
+function extractSectionHtml(html, label) {
+  const headRe = new RegExp(`<h[23][^>]*>\\s*${label}\\s*<\\/h[23]>`, 'i');
+  const headMatch = headRe.exec(html);
+  if (!headMatch) return null;
+  const rest = html.slice(headMatch.index + headMatch[0].length, headMatch.index + headMatch[0].length + 2000);
+  const linkMatch = /<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i.exec(rest);
+  if (!linkMatch) return null;
+  return { citation: linkMatch[2].trim().replace(/\s+/g, ' '), usccbUrl: linkMatch[1] };
+}
+
+async function tryDirect(pageUrl) {
+  const res = await fetch(pageUrl, { headers: BROWSER_HEADERS });
+  if (!res.ok) throw new Error(`Direct fetch failed: ${res.status}`);
+  const html = await res.text();
+  const titleMatch = /<title>([^<|]+)/i.exec(html);
+  const title = titleMatch ? titleMatch[1].trim() : 'Today\'s Readings';
+  const sections = [];
+  for (const label of SECTION_LABELS) {
+    const found = extractSectionHtml(html, label);
+    if (found) sections.push({ label, ...found });
   }
+  if (!sections.length) throw new Error('No sections found in direct HTML.');
+  return { title, sections };
+}
+
+// --- Proxy reader fetch/parse (bypasses IP-based blocking on USCCB's end) ---
+function extractSectionMarkdown(text, label) {
+  const headRe = new RegExp(`#{2,3}\\s*${label}\\s*\\n`, 'i');
+  const headMatch = headRe.exec(text);
+  if (!headMatch) return null;
+  const rest = text.slice(headMatch.index + headMatch[0].length, headMatch.index + headMatch[0].length + 1000);
+  const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(rest);
+  if (!linkMatch) return null;
+  return { citation: linkMatch[1].trim().replace(/\s+/g, ' '), usccbUrl: linkMatch[2] };
+}
+
+async function tryViaReaderProxy(pageUrl) {
+  const res = await fetch(`https://r.jina.ai/${pageUrl}`, { headers: { Accept: 'text/plain' } });
+  if (!res.ok) throw new Error(`Reader proxy fetch failed: ${res.status}`);
+  const text = await res.text();
+  const titleMatch = /^title:\s*(.+)$/mi.exec(text);
+  const title = titleMatch ? titleMatch[1].replace(/\s*\|\s*USCCB.*$/i, '').trim() : 'Today\'s Readings';
+  const sections = [];
+  for (const label of SECTION_LABELS) {
+    const found = extractSectionMarkdown(text, label);
+    if (found) sections.push({ label, ...found });
+  }
+  if (!sections.length) throw new Error('No sections found via reader proxy.');
+  return { title, sections };
+}
+
+async function withRetry(fn, attempts = 2) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  throw lastErr;
 }
 
 exports.handler = async (event) => {
@@ -102,45 +142,37 @@ exports.handler = async (event) => {
   const isoDate = mmddyyToIso(mmddyy);
   const pageUrl = `https://bible.usccb.org/bible/readings/${mmddyy}.cfm`;
 
-  // Serve from cache if someone already fetched today's readings successfully.
   const cached = await getCached(isoDate);
   if (cached && Array.isArray(cached.sections) && cached.sections.length) {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ title: cached.title, pageUrl: cached.page_url, sections: cached.sections })
-    };
+    return { statusCode: 200, body: JSON.stringify({ title: cached.title, pageUrl: cached.page_url, sections: cached.sections }) };
+  }
+
+  let result;
+  let lastError;
+  try {
+    result = await withRetry(() => tryDirect(pageUrl), 1);
+  } catch (err) {
+    lastError = err;
+    try {
+      result = await withRetry(() => tryViaReaderProxy(pageUrl), 2);
+    } catch (err2) {
+      lastError = err2;
+    }
+  }
+
+  if (!result) {
+    console.error('daily-readings error:', lastError);
+    return { statusCode: 502, body: JSON.stringify({ error: (lastError && lastError.message) || 'Could not load readings right now.', pageUrl }) };
   }
 
   try {
-    const html = await fetchUsccbPage(pageUrl);
-
-    const titleMatch = /<title>([^<|]+)/i.exec(html);
-    const title = titleMatch ? titleMatch[1].trim() : 'Today\'s Readings';
-
-    const sectionLabels = ['Reading 1', 'Reading 2', 'Responsorial Psalm', 'Alleluia', 'Gospel'];
-    const sections = [];
-    for (const label of sectionLabels) {
-      const found = extractSection(html, label);
-      if (found) sections.push({ label, ...found });
-    }
-
-    if (!sections.length) {
-      throw new Error('No sections found on USCCB page (page layout may have changed).');
-    }
-
-    // Fetch public-domain text for each section in parallel
-    await Promise.all(sections.map(async (s) => {
+    await Promise.all(result.sections.map(async (s) => {
       s.text = await fetchPublicDomainText(s.citation);
     }));
-
-    await saveCache(isoDate, title, pageUrl, sections);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ title, pageUrl, sections })
-    };
+    await saveCache(isoDate, result.title, pageUrl, result.sections);
+    return { statusCode: 200, body: JSON.stringify({ title: result.title, pageUrl, sections: result.sections }) };
   } catch (err) {
-    console.error('daily-readings error:', err);
+    console.error('daily-readings post-processing error:', err);
     return { statusCode: 502, body: JSON.stringify({ error: err.message || 'Could not load readings right now.', pageUrl }) };
   }
 };
