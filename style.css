@@ -159,23 +159,22 @@ button { font-family: inherit; cursor: pointer; }
 .hero-sub { color: var(--ink-soft); margin-top: 8px; font-size: 15px; }
 .hero-actions { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
 
-/* Install-as-app banner */
+/* Install-as-app dropdown */
 .install-banner {
-  position: relative;
   background: var(--season-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px 40px 16px 18px;
+  padding: 14px 18px;
   margin-bottom: 24px;
 }
-.install-banner-title { font-family: 'Fraunces', serif; font-size: 15.5px; font-weight: 600; margin-bottom: 6px; }
-.install-banner-body { display: flex; gap: 24px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
-.install-banner-close {
-  position: absolute; top: 10px; right: 12px;
-  border: none; background: none; font-size: 18px; line-height: 1;
-  color: var(--ink-faint); cursor: pointer; padding: 4px;
+.install-banner-title {
+  font-family: 'Fraunces', serif; font-size: 15.5px; font-weight: 600;
+  cursor: pointer; list-style: none;
 }
-.install-banner-close:hover { color: var(--ink); }
+.install-banner-title::-webkit-details-marker { display: none; }
+.install-banner-title::before { content: '▸ '; color: var(--ink-faint); }
+.install-banner[open] .install-banner-title::before { content: '▾ '; }
+.install-banner-body { display: flex; gap: 24px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 12px; }
 @media (max-width: 640px) {
   .install-banner-body { flex-direction: column; gap: 8px; }
 }
