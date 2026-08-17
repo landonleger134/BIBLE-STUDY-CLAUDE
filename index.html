@@ -305,12 +305,25 @@
         <label>Date
           <input type="date" id="evDate">
         </label>
+        <label>Time (optional)
+          <input type="time" id="evTime">
+        </label>
+        <label>Location (optional)
+          <input type="text" id="evLocation" placeholder="e.g. 10101 Siegen Lane, Baton Rouge">
+        </label>
         <label>Note (optional)
           <input type="text" id="evNote" placeholder="e.g. bring a dish to share">
         </label>
         <label class="checkbox-row">
           <input type="checkbox" id="evIsMeeting">
           This is a group meeting
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="evRepeats">
+          Repeats weekly
+        </label>
+        <label id="evRepeatUntilRow" class="hidden">Repeat until
+          <input type="date" id="evRepeatUntil">
         </label>
         <div class="composer-actions">
           <button class="btn btn-primary" id="saveEventBtn">Add event</button>

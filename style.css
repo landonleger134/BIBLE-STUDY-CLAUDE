@@ -351,6 +351,7 @@ button { font-family: inherit; cursor: pointer; }
 .cal-detail-item { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .cal-detail-item:last-child { border-bottom: none; }
 .cal-detail-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-right: 8px; }
+.cal-detail-when { color: var(--ink-faint); font-size: 12.5px; }
 .cal-detail-delete { margin-left: auto; background: none; border: none; font-size: 11.5px; color: var(--ink-faint); text-decoration: underline; text-underline-offset: 2px; padding: 0; }
 .cal-detail-delete:hover { color: var(--red); }
 

@@ -1075,24 +1075,50 @@ document.getElementById('newEventBtn').addEventListener('click', () => {
 document.getElementById('cancelEventBtn').addEventListener('click', () => {
   document.getElementById('eventComposer').classList.add('hidden');
 });
+document.getElementById('evRepeats').addEventListener('change', (e) => {
+  document.getElementById('evRepeatUntilRow').classList.toggle('hidden', !e.target.checked);
+});
 document.getElementById('saveEventBtn').addEventListener('click', async () => {
   const title = document.getElementById('evTitle').value.trim();
   const date = document.getElementById('evDate').value;
+  const time = document.getElementById('evTime').value || null;
+  const location = document.getElementById('evLocation').value.trim();
   const note = document.getElementById('evNote').value.trim();
   const isMeeting = document.getElementById('evIsMeeting').checked;
+  const repeats = document.getElementById('evRepeats').checked;
+  const repeatUntil = document.getElementById('evRepeatUntil').value;
   if (!title || !date) { toast('Add a title and date.', true); return; }
+  if (repeats && !repeatUntil) { toast('Pick a "repeat until" date.', true); return; }
   if (!currentProfile) return;
-  const { error } = await sb.from('calendar_events').insert({
-    title, event_date: date, note, is_meeting: isMeeting,
+
+  const dates = [date];
+  if (repeats) {
+    let d = new Date(date + 'T00:00:00');
+    const end = new Date(repeatUntil + 'T00:00:00');
+    while (true) {
+      d = new Date(d.getTime() + 7 * 24 * 60 * 60 * 1000);
+      if (d > end) break;
+      dates.push(ymd(d));
+    }
+  }
+
+  const rows = dates.map(event_date => ({
+    title, event_date, event_time: time, location, note, is_meeting: isMeeting,
     added_by: currentProfile.display_name, added_by_id: currentProfile.id
-  });
+  }));
+  const { error } = await sb.from('calendar_events').insert(rows);
   if (error) { toast('Could not add event.', true); return; }
   document.getElementById('evTitle').value = '';
   document.getElementById('evDate').value = '';
+  document.getElementById('evTime').value = '';
+  document.getElementById('evLocation').value = '';
   document.getElementById('evNote').value = '';
   document.getElementById('evIsMeeting').checked = false;
+  document.getElementById('evRepeats').checked = false;
+  document.getElementById('evRepeatUntil').value = '';
+  document.getElementById('evRepeatUntilRow').classList.add('hidden');
   document.getElementById('eventComposer').classList.add('hidden');
-  toast('Event added!');
+  toast(rows.length > 1 ? `${rows.length} events added!` : 'Event added!');
   loadCalendarEvents();
 });
 
@@ -1166,7 +1192,13 @@ function showDayDetail(key, feasts, events) {
   detail.classList.remove('hidden');
   detail.innerHTML = `<h3 style="margin-bottom:10px;">${label}</h3>` +
     feasts.map(f => `<div class="cal-detail-item"><span class="cal-detail-tag" style="background:${f.holyDay ? '#8c2a2a1a' : '#a8823c1a'};color:${f.holyDay ? '#8c2a2a' : '#a8823c'}">${f.holyDay ? 'Holy Day' : 'Feast'}</span>${escapeHtml(f.name)}</div>`).join('') +
-    events.map(e => `<div class="cal-detail-item"><span class="cal-detail-tag" style="background:${e.is_meeting ? '#3f6e4e1a' : '#9a8f7e1a'};color:${e.is_meeting ? '#3f6e4e' : '#6b5f52'}">${e.is_meeting ? 'Meeting' : 'Event'}</span>${escapeHtml(e.title)}${e.note ? ' — ' + escapeHtml(e.note) : ''} <span style="color:var(--ink-faint)">(${escapeHtml(e.added_by)})</span>${myId && e.added_by_id === myId ? `<button class="cal-detail-delete" data-del="${e.id}">remove</button>` : ''}</div>`).join('');
+    events.map(e => {
+      const when = [
+        e.event_time ? formatTime(e.event_time) : null,
+        e.location ? escapeHtml(e.location) : null
+      ].filter(Boolean).join(' · ');
+      return `<div class="cal-detail-item"><span class="cal-detail-tag" style="background:${e.is_meeting ? '#3f6e4e1a' : '#9a8f7e1a'};color:${e.is_meeting ? '#3f6e4e' : '#6b5f52'}">${e.is_meeting ? 'Meeting' : 'Event'}</span>${escapeHtml(e.title)}${when ? ` <span class="cal-detail-when">(${when})</span>` : ''}${e.note ? ' — ' + escapeHtml(e.note) : ''} <span style="color:var(--ink-faint)">(${escapeHtml(e.added_by)})</span>${myId && e.added_by_id === myId ? `<button class="cal-detail-delete" data-del="${e.id}">remove</button>` : ''}</div>`;
+    }).join('');
   detail.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', () => deleteEvent(btn.dataset.del));
   });
@@ -1197,7 +1229,20 @@ function updateHomeMeetingCard() {
     .sort((a, b) => a.event_date.localeCompare(b.event_date))[0];
   if (!upcoming) { el.textContent = 'No meeting scheduled yet.'; return; }
   const label = new Date(upcoming.event_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  el.textContent = `${upcoming.title} — ${label}${upcoming.note ? ' (' + upcoming.note + ')' : ''}`;
+  const when = [
+    label,
+    upcoming.event_time ? formatTime(upcoming.event_time) : null,
+    upcoming.location || null
+  ].filter(Boolean).join(' · ');
+  el.textContent = `${upcoming.title} — ${when}${upcoming.note ? ' (' + upcoming.note + ')' : ''}`;
+}
+
+function formatTime(t) {
+  // t is like "06:15:00" from Postgres time type
+  const [h, m] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
 // ============================================================
