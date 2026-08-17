@@ -1096,8 +1096,8 @@ document.getElementById('saveHomeworkBtn').addEventListener('click', async () =>
 let loadedHomeworkSessions = [];
 
 function normalizeHwQuestion(q) {
-  if (typeof q === 'string') return { text: q, category: null, assignedTo: '' };
-  return { text: q.text || '', category: q.category || null, assignedTo: q.assignedTo || '' };
+  if (typeof q === 'string') return { text: q, category: null, assignedTo: '', removed: false };
+  return { text: q.text || '', category: q.category || null, assignedTo: q.assignedTo || '', removed: !!q.removed };
 }
 
 async function loadHomework() {
@@ -1155,6 +1155,23 @@ async function loadHomework() {
       loadHomework();
     });
   });
+
+  listEl.querySelectorAll('.hw-delete-question').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this question from the list? This won\'t affect any questions already assigned or answered.')) return;
+      const sessionId = btn.dataset.session;
+      const qIdx = Number(btn.dataset.qindex);
+      const session = loadedHomeworkSessions.find(s => s.id === sessionId);
+      if (!session) return;
+      const questions = (Array.isArray(session.questions) ? session.questions : []).map(normalizeHwQuestion);
+      questions[qIdx] = { ...questions[qIdx], removed: true };
+      const { error } = await sb.from('homework_sessions').update({ questions }).eq('id', sessionId);
+      if (error) { toast('Could not remove question.', true); return; }
+      session.questions = questions;
+      toast('Question removed.');
+      loadHomework();
+    });
+  });
 }
 function homeworkCardHtml(s, answers) {
   const due = s.due_date ? new Date(s.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
@@ -1162,8 +1179,11 @@ function homeworkCardHtml(s, answers) {
 
   const assignedIdx = [];
   const unassignedIdx = [];
+  let activeCount = 0;
   questions.forEach((qRaw, idx) => {
     const q = normalizeHwQuestion(qRaw);
+    if (q.removed) return;
+    activeCount++;
     (q.assignedTo ? assignedIdx : unassignedIdx).push(idx);
   });
 
@@ -1199,6 +1219,7 @@ function homeworkCardHtml(s, answers) {
       <div class="hw-compact-row">
         <div class="hw-compact-text">${idx + 1}. ${escapeHtml(q.text)}</div>
         <input type="text" class="hw-assign-input hw-assign-input-compact" data-session="${s.id}" data-qindex="${idx}" value="" placeholder="Assign to…">
+        <button type="button" class="hw-delete-question" data-session="${s.id}" data-qindex="${idx}" title="Remove this question">🗑</button>
       </div>`;
   }
 
@@ -1214,7 +1235,7 @@ function homeworkCardHtml(s, answers) {
     <div class="hw-head">
       <div>
         <div class="hw-title">${escapeHtml(s.title)}</div>
-        <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''} · ${assignedIdx.length} of ${questions.length} assigned</div>
+        <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''} · ${assignedIdx.length} of ${activeCount} assigned</div>
       </div>
     </div>
 
