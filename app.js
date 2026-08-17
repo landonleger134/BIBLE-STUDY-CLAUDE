@@ -171,6 +171,7 @@ async function enterApp() {
   loadContacts();
   loadServiceOpportunities();
   loadParishes();
+  checkDevotionalStock();
 }
 
 async function handleSession(session) {
@@ -1903,6 +1904,43 @@ async function loadParishes() {
     });
   });
 }
+
+// ============================================================
+// Devotional stock warning (admin only)
+// ============================================================
+const LOW_STOCK_WARNING_DAYS = 7;
+
+async function checkDevotionalStock() {
+  if (!currentProfile?.is_admin) return;
+  if (localStorage.getItem('devoStockDismissedFor') === ymd(new Date())) return;
+
+  const { data, error } = await sb.from('devotionals').select('devo_date').order('devo_date', { ascending: false }).limit(1);
+  if (error) return;
+
+  const today = ymd(new Date());
+  const latest = data && data[0] ? data[0].devo_date : null;
+  const daysLeft = latest ? Math.floor((new Date(latest + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) : -1;
+
+  if (daysLeft < LOW_STOCK_WARNING_DAYS) {
+    showDevoStockModal(latest, daysLeft);
+  }
+}
+
+function showDevoStockModal(latestDate, daysLeft) {
+  const modal = document.getElementById('devoStockModal');
+  const body = document.getElementById('devoStockModalBody');
+  if (daysLeft < 0) {
+    body.textContent = `The Devotional tab has run out — there's nothing loaded past ${latestDate ? new Date(latestDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : 'today'}. Ask Claude to write and load another month.`;
+  } else {
+    body.textContent = `Only ${daysLeft} day${daysLeft === 1 ? '' : 's'} of devotionals left (through ${new Date(latestDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}). Ask Claude to write and load the next batch soon.`;
+  }
+  modal.classList.remove('hidden');
+}
+
+document.getElementById('devoStockDismiss').addEventListener('click', () => {
+  localStorage.setItem('devoStockDismissedFor', ymd(new Date()));
+  document.getElementById('devoStockModal').classList.add('hidden');
+});
 
 // ============================================================
 // Utilities
