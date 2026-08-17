@@ -978,24 +978,25 @@ async function loadHomework() {
       if (error) { toast('Could not save assignment.', true); return; }
       session.questions = questions;
       toast('Assignment saved.');
+      loadHomework();
     });
   });
 }
 function homeworkCardHtml(s, answers) {
   const due = s.due_date ? new Date(s.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
   const questions = Array.isArray(s.questions) ? s.questions : [];
-  return `
-  <div class="hw-card">
-    <div class="hw-head">
-      <div>
-        <div class="hw-title">${escapeHtml(s.title)}</div>
-        <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''}</div>
-      </div>
-    </div>
-    ${questions.map((qRaw, idx) => {
-      const q = normalizeHwQuestion(qRaw);
-      const qAnswers = answers.filter(a => a.question_index === idx);
-      return `
+
+  const assignedIdx = [];
+  const unassignedIdx = [];
+  questions.forEach((qRaw, idx) => {
+    const q = normalizeHwQuestion(qRaw);
+    (q.assignedTo ? assignedIdx : unassignedIdx).push(idx);
+  });
+
+  function fullQuestionCard(idx) {
+    const q = normalizeHwQuestion(questions[idx]);
+    const qAnswers = answers.filter(a => a.question_index === idx);
+    return `
       <div class="hw-question">
         <div class="hw-question-head">
           <div class="hw-question-text">${idx + 1}. ${escapeHtml(q.text)}</div>
@@ -1016,7 +1017,48 @@ function homeworkCardHtml(s, answers) {
           <button class="btn btn-primary btn-sm" type="submit">Post</button>
         </form>
       </div>`;
-    }).join('')}
+  }
+
+  function compactRow(idx) {
+    const q = normalizeHwQuestion(questions[idx]);
+    return `
+      <div class="hw-compact-row">
+        <div class="hw-compact-text">${idx + 1}. ${escapeHtml(q.text)}</div>
+        <input type="text" class="hw-assign-input hw-assign-input-compact" data-session="${s.id}" data-qindex="${idx}" value="" placeholder="Assign to…">
+      </div>`;
+  }
+
+  // Group the unassigned pool by category for easier browsing.
+  const unassignedByCategory = {};
+  unassignedIdx.forEach(idx => {
+    const cat = normalizeHwQuestion(questions[idx]).category || 'Other';
+    (unassignedByCategory[cat] ||= []).push(idx);
+  });
+
+  return `
+  <div class="hw-card">
+    <div class="hw-head">
+      <div>
+        <div class="hw-title">${escapeHtml(s.title)}</div>
+        <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''} · ${assignedIdx.length} of ${questions.length} assigned</div>
+      </div>
+    </div>
+
+    ${assignedIdx.length ? assignedIdx.map(fullQuestionCard).join('') : `<div class="empty-state" style="margin-top:16px;">No one's picked a question yet — assign one from the list below.</div>`}
+
+    ${unassignedIdx.length ? `
+      <details class="hw-unassigned">
+        <summary>Unassigned questions (${unassignedIdx.length}) — browse &amp; assign</summary>
+        <div class="hw-unassigned-body">
+          ${Object.entries(unassignedByCategory).map(([cat, idxs]) => `
+            <div class="hw-category-group">
+              <div class="hw-category-group-title">${escapeHtml(cat)}</div>
+              ${idxs.map(compactRow).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </details>
+    ` : ''}
   </div>`;
 }
 

@@ -297,6 +297,19 @@ button { font-family: inherit; cursor: pointer; }
 .hw-assign-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px; }
 .hw-assign-row input { font-family: 'Inter', sans-serif; text-transform: none; letter-spacing: normal; font-size: 13.5px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; background: var(--paper); width: 160px; }
 .hw-assign-row input:focus { outline: 2px solid var(--season); outline-offset: 1px; }
+
+.hw-unassigned { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.hw-unassigned summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.03em; list-style: none; }
+.hw-unassigned summary::-webkit-details-marker { display: none; }
+.hw-unassigned summary::before { content: '▸ '; }
+.hw-unassigned[open] summary::before { content: '▾ '; }
+.hw-unassigned-body { margin-top: 14px; }
+.hw-category-group { margin-bottom: 16px; }
+.hw-category-group-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gold); margin-bottom: 6px; font-weight: 600; }
+.hw-compact-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.hw-compact-row:last-child { border-bottom: none; }
+.hw-compact-text { font-size: 13.5px; color: var(--ink-soft); flex: 1; }
+.hw-assign-input-compact { width: 130px; flex-shrink: 0; }
 .hw-answers { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .hw-answer { background: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; line-height: 1.5; }
 .hw-answer-author { font-weight: 700; font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; color: var(--gold); margin-bottom: 3px; }
