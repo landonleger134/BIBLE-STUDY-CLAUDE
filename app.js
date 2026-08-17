@@ -508,26 +508,53 @@ async function loadGuides() {
     });
   });
 }
+function formatGuideText(text) {
+  if (!text) return '';
+  return escapeHtml(text)
+    .split(/\n{2,}/)
+    .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
 function guideCardHtml(g) {
   const reflect = Array.isArray(g.reflection_questions) ? g.reflection_questions : [];
   const discuss = Array.isArray(g.discussion_questions) ? g.discussion_questions : [];
+  const sections = Array.isArray(g.sections) ? g.sections : [];
   const date = new Date(g.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  return `
-  <div class="guide-card">
-    <div class="guide-head">
-      <div>
-        <div class="guide-title">${escapeHtml(g.title)}</div>
-        <div class="guide-meta">${g.scripture_ref ? escapeHtml(g.scripture_ref) + ' · ' : ''}by ${escapeHtml(g.created_by)} · ${date}</div>
+  const seriesBadge = g.series_week ? `<span class="guide-badge">${escapeHtml(g.series_week)}</span> · ` : '';
+
+  let bodyHtml;
+  if (sections.length) {
+    // Richer imported guides: render each section as-is, in original order.
+    bodyHtml = sections.map(s => `
+      <div class="guide-section">
+        <h4>${escapeHtml(s.heading || '')}</h4>
+        ${formatGuideText(s.body || '')}
       </div>
-      <button class="btn btn-ghost btn-sm">Open</button>
-    </div>
-    <div class="guide-body">
+    `).join('');
+  } else {
+    // Older AI-generated guide format (6 fixed fields).
+    bodyHtml = `
       ${g.context ? `<div class="guide-section"><h4>Context</h4><p>${escapeHtml(g.context)}</p></div>` : ''}
       ${g.opening_prayer ? `<div class="guide-section"><h4>Opening Prayer</h4><p>${escapeHtml(g.opening_prayer)}</p></div>` : ''}
       ${reflect.length ? `<div class="guide-section"><h4>Reflection Questions</h4><ol>${reflect.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol></div>` : ''}
       ${discuss.length ? `<div class="guide-section"><h4>Discussion Questions</h4><ol>${discuss.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol></div>` : ''}
       ${g.application ? `<div class="guide-section"><h4>Living It Out</h4><p>${escapeHtml(g.application)}</p></div>` : ''}
       ${g.closing_prayer ? `<div class="guide-section"><h4>Closing Prayer</h4><p>${escapeHtml(g.closing_prayer)}</p></div>` : ''}
+    `;
+  }
+
+  return `
+  <div class="guide-card">
+    <div class="guide-head">
+      <div>
+        <div class="guide-title">${escapeHtml(g.title)}</div>
+        <div class="guide-meta">${seriesBadge}${g.scripture_ref ? escapeHtml(g.scripture_ref) + ' · ' : ''}by ${escapeHtml(g.created_by)} · ${date}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm">Open</button>
+    </div>
+    <div class="guide-body">
+      ${bodyHtml}
     </div>
   </div>`;
 }
