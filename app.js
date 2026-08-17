@@ -1603,18 +1603,51 @@ async function loadContacts() {
   }
 
   const myId = currentProfile?.id;
+  const isAdmin = !!currentProfile?.is_admin;
   const all = data || [];
   if (!all.length) {
     listEl.innerHTML = `<div class="empty-state">No one's joined yet.</div>`;
     return;
   }
-  listEl.innerHTML = all.map(p => `
+
+  listEl.innerHTML = all.map(p => {
+    if (isAdmin) {
+      return `
+      <div class="contact-card contact-card-editable">
+        <div class="contact-edit-fields">
+          <input type="text" class="contact-edit-name" data-id="${p.id}" value="${escapeHtml(p.display_name)}" placeholder="Name">
+          <input type="tel" class="contact-edit-phone" data-id="${p.id}" value="${escapeHtml(p.phone || '')}" placeholder="Phone number">
+        </div>
+        <div class="contact-edit-row">
+          ${p.id === myId ? '<span class="contact-you-tag">(You)</span>' : ''}
+          <button type="button" class="btn btn-ghost btn-sm contact-save-btn" data-id="${p.id}">Save</button>
+        </div>
+      </div>`;
+    }
+    return `
     <div class="contact-card">
       <div class="contact-name">${escapeHtml(p.display_name)}${p.id === myId ? ' <span class="contact-you-tag">(You)</span>' : ''}</div>
       ${p.phone
         ? `<a class="contact-phone" href="tel:${escapeHtml(p.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(p.phone)}</a>`
         : `<span class="contact-phone-missing">No number shared yet</span>`}
-    </div>`).join('');
+    </div>`;
+  }).join('');
+
+  if (isAdmin) {
+    listEl.querySelectorAll('.contact-save-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const card = btn.closest('.contact-card');
+        const name = card.querySelector('.contact-edit-name').value.trim();
+        const phone = card.querySelector('.contact-edit-phone').value.trim();
+        if (!name) { toast('Name can\'t be empty.', true); return; }
+        const { error } = await sb.from('profiles').update({ display_name: name, phone: phone || null }).eq('id', id);
+        if (error) { toast('Could not save changes.', true); return; }
+        toast('Saved.');
+        loadContacts();
+      });
+    });
+  }
 }
 
 // ============================================================
