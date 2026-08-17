@@ -190,8 +190,11 @@ function gotoTab(tab) {
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tab === tab);
   });
+  const navSelect = document.getElementById('navSelect');
+  if (navSelect) navSelect.value = tab;
   window.scrollTo({ top: 0 });
 }
+document.getElementById('navSelect').addEventListener('change', (e) => gotoTab(e.target.value));
 document.getElementById('nav').addEventListener('click', (e) => {
   const btn = e.target.closest('.nav-item');
   if (btn) gotoTab(btn.dataset.tab);
