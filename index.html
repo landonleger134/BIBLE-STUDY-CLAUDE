@@ -28,20 +28,15 @@
       </div>
     </div>
 
-    <div id="gateStep-email">
+    <div id="gateStep-login">
       <h1 class="gate-title">Sign in to the group</h1>
-      <p class="gate-desc">Enter your email and we'll send you a one-click sign-in link. No password to remember.</p>
-      <form id="gateEmailForm" class="gate-form">
+      <p class="gate-desc">Enter your email and the group password (posted in the group text chain).</p>
+      <form id="gateLoginForm" class="gate-form">
         <input type="email" id="gateEmailInput" placeholder="you@example.com" required autocomplete="email">
-        <button class="btn btn-primary btn-lg" type="submit" id="gateSendBtn">Send sign-in link</button>
+        <input type="password" id="gatePasswordInput" placeholder="Group password" required autocomplete="current-password">
+        <button class="btn btn-primary btn-lg" type="submit" id="gateSendBtn">Continue</button>
       </form>
       <div id="gateStatus" class="status-msg hidden"></div>
-    </div>
-
-    <div id="gateStep-sent" class="hidden">
-      <h1 class="gate-title">Check your email</h1>
-      <p class="gate-desc">We sent a sign-in link to <strong id="gateSentEmail"></strong>. Open it on this device to continue.</p>
-      <button class="btn btn-ghost" id="gateBackBtn">Use a different email</button>
     </div>
 
     <div id="gateStep-name" class="hidden">

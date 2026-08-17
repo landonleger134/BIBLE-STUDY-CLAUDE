@@ -76,38 +76,51 @@ document.getElementById('signOutBtn').addEventListener('click', async () => {
 const gateEl = document.getElementById('gate');
 const appRootEl = document.getElementById('appRoot');
 
+// The whole group shares this one password (posted in the group text chain) —
+// each person still signs in with their own email, this just replaces the "click a
+// magic link" step so no email-sending service is required at all.
+const GROUP_PASSWORD = 'Brotherhood25';
+
 function showGateStep(step) {
-  ['email', 'sent', 'name'].forEach(s => {
+  ['login', 'name'].forEach(s => {
     document.getElementById(`gateStep-${s}`).classList.toggle('hidden', s !== step);
   });
 }
 
-document.getElementById('gateEmailForm').addEventListener('submit', async (e) => {
+document.getElementById('gateLoginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('gateEmailInput').value.trim();
-  if (!email) return;
+  const password = document.getElementById('gatePasswordInput').value;
+  if (!email || !password) return;
   const statusEl = document.getElementById('gateStatus');
   const btn = document.getElementById('gateSendBtn');
   btn.disabled = true;
   statusEl.classList.add('hidden', 'error');
+
+  if (password !== GROUP_PASSWORD) {
+    statusEl.textContent = "That's not the group password — check the group text chain.";
+    statusEl.classList.remove('hidden');
+    statusEl.classList.add('error');
+    btn.disabled = false;
+    return;
+  }
+
   try {
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin }
-    });
-    if (error) throw error;
-    document.getElementById('gateSentEmail').textContent = email;
-    showGateStep('sent');
+    // Try signing in first (returning member); if that fails, this must be a first-time
+    // join, so create the account instead.
+    let { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      const signUp = await sb.auth.signUp({ email, password });
+      if (signUp.error) throw signUp.error;
+    }
   } catch (err) {
-    statusEl.textContent = err.message || 'Could not send the link. Try again.';
+    statusEl.textContent = err.message || 'Could not sign in. Try again.';
     statusEl.classList.remove('hidden');
     statusEl.classList.add('error');
   } finally {
     btn.disabled = false;
   }
 });
-
-document.getElementById('gateBackBtn').addEventListener('click', () => showGateStep('email'));
 
 document.getElementById('gateNameForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -161,7 +174,7 @@ async function handleSession(session) {
     currentProfile = null;
     appRootEl.classList.add('hidden');
     gateEl.classList.remove('hidden');
-    showGateStep('email');
+    showGateStep('login');
     return;
   }
   currentUser = session.user;
