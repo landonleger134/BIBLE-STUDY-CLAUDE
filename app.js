@@ -13,6 +13,22 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Install-as-app banner: hide if already installed/standalone, or if previously dismissed.
+(function initInstallBanner() {
+  const banner = document.getElementById('installBanner');
+  if (!banner) return;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('installBannerDismissed') === '1';
+  if (isStandalone || dismissed) {
+    banner.remove();
+    return;
+  }
+  document.getElementById('installBannerClose').addEventListener('click', () => {
+    localStorage.setItem('installBannerDismissed', '1');
+    banner.remove();
+  });
+})();
+
 
 // ============================================================
 // Toast
