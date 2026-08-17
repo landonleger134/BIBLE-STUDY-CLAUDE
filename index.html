@@ -8,6 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#c9a227">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Upper Room">
 </head>
 <body>
 
@@ -78,11 +84,17 @@
         <button class="nav-item" data-tab="ideas">
           <span class="nav-eyebrow">05</span> Ideas Board
         </button>
+        <button class="nav-item" data-tab="prayer">
+          <span class="nav-eyebrow">06</span> Prayer Requests
+        </button>
         <button class="nav-item" data-tab="homework">
-          <span class="nav-eyebrow">06</span> Homework
+          <span class="nav-eyebrow">07</span> Homework
         </button>
         <button class="nav-item" data-tab="calendar">
-          <span class="nav-eyebrow">07</span> Calendar
+          <span class="nav-eyebrow">08</span> Calendar
+        </button>
+        <button class="nav-item" data-tab="photos">
+          <span class="nav-eyebrow">09</span> Photos
         </button>
       </nav>
     </div>
@@ -191,6 +203,10 @@
         </div>
       </header>
 
+      <div class="guide-search-row">
+        <input type="text" id="guideSearchInput" placeholder="Search guides by title, scripture, or series…" class="guide-search-input">
+      </div>
+
       <div id="guideUploadPreview" class="composer hidden">
         <h3>Review before saving</h3>
         <p class="panel-desc" style="margin-top:-4px;">Pulled from your .docx — headings were detected automatically from bold lines. Fix anything that looks off, then save.</p>
@@ -255,11 +271,39 @@
       <div id="ideaList" class="stack"></div>
     </section>
 
+    <!-- PRAYER REQUESTS -->
+    <section class="panel" id="panel-prayer">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">06 — Prayer Requests</div>
+          <h2>Prayer Requests</h2>
+          <p class="panel-desc">What's actually going on with the group. Post a request, mark it as praying, and check things off as answered.</p>
+        </div>
+      </header>
+
+      <div class="composer">
+        <label>Request
+          <textarea id="prayerText" rows="2" placeholder="What's going on that the group can be praying for?"></textarea>
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="addPrayerBtn">Post request</button>
+        </div>
+      </div>
+
+      <div class="prayer-filter-row">
+        <button class="btn btn-ghost btn-sm is-active" data-prayer-filter="open">Open</button>
+        <button class="btn btn-ghost btn-sm" data-prayer-filter="answered">Answered</button>
+        <button class="btn btn-ghost btn-sm" data-prayer-filter="all">All</button>
+      </div>
+
+      <div id="prayerList" class="stack"></div>
+    </section>
+
     <!-- HOMEWORK -->
     <section class="panel" id="panel-homework">
       <header class="panel-head">
         <div>
-          <div class="panel-eyebrow">06 — Homework</div>
+          <div class="panel-eyebrow">07 — Homework</div>
           <h2>Homework &amp; Discussion</h2>
           <p class="panel-desc">Post a few questions for the group. Everyone answers in a short synopsis — aim for about 3–5 minutes' worth of thought, nothing longer.</p>
         </div>
@@ -290,7 +334,7 @@
     <section class="panel" id="panel-calendar">
       <header class="panel-head">
         <div>
-          <div class="panel-eyebrow">07 — Calendar</div>
+          <div class="panel-eyebrow">08 — Calendar</div>
           <h2>Calendar</h2>
           <p class="panel-desc">Solemnities, feast days, and holy days of obligation from the Church calendar, alongside your group's own gatherings.</p>
         </div>
@@ -344,6 +388,23 @@
         <span><i class="dot dot-event"></i> Other group event</span>
       </div>
       <div id="calDayDetail" class="cal-day-detail hidden"></div>
+    </section>
+
+    <!-- PHOTOS -->
+    <section class="panel" id="panel-photos">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">09 — Photos</div>
+          <h2>Photo Board</h2>
+          <p class="panel-desc">Photos from meetings and group events. Anyone can add one.</p>
+        </div>
+        <div class="panel-head-actions">
+          <button class="btn btn-primary" id="uploadPhotoBtn">+ Add photo</button>
+          <input type="file" id="uploadPhotoInput" accept="image/*" class="hidden">
+        </div>
+      </header>
+      <div id="photoUploadStatus" class="status-msg hidden"></div>
+      <div id="photoGrid" class="photo-grid"></div>
     </section>
 
   </main>

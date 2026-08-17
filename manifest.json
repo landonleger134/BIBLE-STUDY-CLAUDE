@@ -1,0 +1,13 @@
+{
+  "name": "The Upper Room — Bible Study Hub",
+  "short_name": "Upper Room",
+  "description": "Study guides, homework, prayer requests, and calendar for the group.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1814",
+  "theme_color": "#c9a227",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

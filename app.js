@@ -7,6 +7,13 @@ const SUPABASE_URL = 'https://tltewglxvxdymumuknpo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_2dqRVNmrZQJR2T5kIe8xNw_c3sZdBuu';
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+
 // ============================================================
 // Toast
 // ============================================================
@@ -133,8 +140,10 @@ async function enterApp() {
   loadDevotional();
   loadGuides();
   loadIdeas();
+  loadPrayerRequests();
   loadHomework();
   loadCalendarEvents();
+  loadPhotos();
 }
 
 async function handleSession(session) {
@@ -164,7 +173,7 @@ sb.auth.getSession().then(({ data }) => handleSession(data.session));
 // ============================================================
 // Tab navigation
 // ============================================================
-const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'homework', 'calendar'];
+const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos'];
 function gotoTab(tab) {
   tabs.forEach(t => {
     document.getElementById(`panel-${t}`).classList.toggle('is-active', t === tab);
@@ -492,17 +501,42 @@ document.getElementById('generateGuideBtn').addEventListener('click', async () =
   }
 });
 
+let allGuidesCache = [];
+let allGuideCommentsCache = {};
+
 async function loadGuides() {
   const listEl = document.getElementById('guideList');
   const { data, error } = await sb.from('study_guides').select('*').order('created_at', { ascending: false });
   if (error) { listEl.innerHTML = `<div class="empty-state">Couldn't load study guides.</div>`; return; }
-  if (!data || !data.length) {
+  allGuidesCache = data || [];
+  if (!allGuidesCache.length) {
     listEl.innerHTML = `<div class="empty-state">No study guides yet — generate your first one above.</div>`;
     updateHomeGuideCard(null);
     return;
   }
-  updateHomeGuideCard(data[0]);
-  listEl.innerHTML = data.map(g => guideCardHtml(g)).join('');
+  updateHomeGuideCard(allGuidesCache[0]);
+
+  const { data: comments } = await sb.from('guide_comments').select('*').order('created_at', { ascending: true });
+  allGuideCommentsCache = {};
+  (comments || []).forEach(c => { (allGuideCommentsCache[c.guide_id] ||= []).push(c); });
+
+  renderGuideList();
+}
+
+function renderGuideList() {
+  const listEl = document.getElementById('guideList');
+  const query = (document.getElementById('guideSearchInput')?.value || '').trim().toLowerCase();
+  const data = !query ? allGuidesCache : allGuidesCache.filter(g => {
+    const haystack = [g.title, g.scripture_ref, g.series_week].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(query);
+  });
+
+  if (!data.length) {
+    listEl.innerHTML = `<div class="empty-state">No guides match "${escapeHtml(query)}".</div>`;
+    return;
+  }
+
+  listEl.innerHTML = data.map(g => guideCardHtml(g, allGuideCommentsCache[g.id] || [])).join('');
   listEl.querySelectorAll('.guide-head').forEach(head => {
     head.addEventListener('click', () => {
       head.nextElementSibling.classList.toggle('is-open');
@@ -511,11 +545,31 @@ async function loadGuides() {
   listEl.querySelectorAll('.guide-print-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const guide = data.find(g => g.id === btn.dataset.guideId);
+      const guide = allGuidesCache.find(g => g.id === btn.dataset.guideId);
       if (guide) printGuide(guide);
     });
   });
+  listEl.querySelectorAll('.guide-comment-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentProfile) return;
+      const textarea = form.querySelector('textarea');
+      const text = textarea.value.trim();
+      if (!text) return;
+      const { error } = await sb.from('guide_comments').insert({
+        guide_id: form.dataset.guideId,
+        comment_text: text,
+        author: currentProfile.display_name,
+        author_id: currentProfile.id,
+      });
+      if (error) { toast('Could not post comment.', true); return; }
+      loadGuides();
+    });
+  });
 }
+
+document.getElementById('guideSearchInput').addEventListener('input', () => renderGuideList());
+
 function formatGuideText(text) {
   if (!text) return '';
   const paragraphs = text.split(/\n{2,}/);
@@ -546,7 +600,8 @@ function formatGuideText(text) {
   }).join('');
 }
 
-function guideCardHtml(g) {
+function guideCardHtml(g, comments) {
+  comments = comments || [];
   const reflect = Array.isArray(g.reflection_questions) ? g.reflection_questions : [];
   const discuss = Array.isArray(g.discussion_questions) ? g.discussion_questions : [];
   const sections = Array.isArray(g.sections) ? g.sections : [];
@@ -587,6 +642,18 @@ function guideCardHtml(g) {
       ${bodyHtml}
       <div class="guide-actions">
         <button class="btn btn-ghost btn-sm guide-print-btn" data-guide-id="${g.id}">Print / Save as PDF</button>
+      </div>
+      <div class="guide-comments">
+        <h4>Discussion / Takeaways</h4>
+        ${comments.length ? comments.map(c => `
+          <div class="guide-comment">
+            <div class="guide-comment-author">${escapeHtml(c.author)}</div>
+            <div class="guide-comment-text">${escapeHtml(c.comment_text)}</div>
+          </div>`).join('') : `<div class="guide-comment-empty">No comments yet.</div>`}
+        <form class="guide-comment-form" data-guide-id="${g.id}">
+          <textarea rows="2" placeholder="Share a takeaway from this one…"></textarea>
+          <button class="btn btn-primary btn-sm" type="submit">Post</button>
+        </form>
       </div>
     </div>
   </div>`;
@@ -885,6 +952,101 @@ async function toggleVote(ideaId) {
   const { error: updErr } = await sb.from('ideas').update({ voter_ids: voters }).eq('id', ideaId);
   if (updErr) { toast('Could not update vote.', true); return; }
   loadIdeas();
+}
+
+// ============================================================
+// Prayer Requests
+// ============================================================
+let prayerFilter = 'open';
+document.getElementById('addPrayerBtn').addEventListener('click', async () => {
+  const text = document.getElementById('prayerText').value.trim();
+  if (!text) { toast('Write the request first.', true); return; }
+  if (!currentProfile) return;
+  const { error } = await sb.from('prayer_requests').insert({
+    request_text: text,
+    author: currentProfile.display_name,
+    author_id: currentProfile.id,
+  });
+  if (error) { toast('Could not post request.', true); return; }
+  document.getElementById('prayerText').value = '';
+  toast('Prayer request posted.');
+  loadPrayerRequests();
+});
+
+document.querySelectorAll('[data-prayer-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    prayerFilter = btn.dataset.prayerFilter;
+    document.querySelectorAll('[data-prayer-filter]').forEach(b => b.classList.toggle('is-active', b === btn));
+    loadPrayerRequests();
+  });
+});
+
+async function loadPrayerRequests() {
+  const listEl = document.getElementById('prayerList');
+  const { data, error } = await sb.from('prayer_requests').select('*').order('created_at', { ascending: false });
+  if (error) { listEl.innerHTML = `<div class="empty-state">Couldn't load prayer requests.</div>`; return; }
+  if (!data || !data.length) {
+    listEl.innerHTML = `<div class="empty-state">No prayer requests yet.</div>`;
+    return;
+  }
+  const filtered = data.filter(p => {
+    if (prayerFilter === 'open') return !p.is_answered;
+    if (prayerFilter === 'answered') return p.is_answered;
+    return true;
+  });
+  if (!filtered.length) {
+    listEl.innerHTML = `<div class="empty-state">Nothing here right now.</div>`;
+    return;
+  }
+  const myId = currentProfile?.id;
+  listEl.innerHTML = filtered.map(p => {
+    const praying = p.praying_ids || [];
+    const isPraying = myId && praying.includes(myId);
+    const date = new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `
+    <div class="prayer-card ${p.is_answered ? 'is-answered' : ''}">
+      <div class="prayer-text">${escapeHtml(p.request_text)}</div>
+      <div class="prayer-meta">— ${escapeHtml(p.author)} · ${date}${p.is_answered ? ' · <span class="prayer-answered-tag">Answered</span>' : ''}</div>
+      ${p.is_answered && p.answered_note ? `<div class="prayer-answered-note">${escapeHtml(p.answered_note)}</div>` : ''}
+      <div class="prayer-actions">
+        <button class="btn btn-ghost btn-sm ${isPraying ? 'is-active' : ''}" data-pray="${p.id}">🙏 Praying (${praying.length})</button>
+        ${!p.is_answered ? `<button class="btn btn-ghost btn-sm" data-mark-answered="${p.id}">Mark answered</button>` : `<button class="btn btn-ghost btn-sm" data-mark-open="${p.id}">Reopen</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('[data-pray]').forEach(btn => {
+    btn.addEventListener('click', () => togglePraying(btn.dataset.pray));
+  });
+  listEl.querySelectorAll('[data-mark-answered]').forEach(btn => {
+    btn.addEventListener('click', () => markPrayerAnswered(btn.dataset.markAnswered));
+  });
+  listEl.querySelectorAll('[data-mark-open]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await sb.from('prayer_requests').update({ is_answered: false, answered_note: null }).eq('id', btn.dataset.markOpen);
+      loadPrayerRequests();
+    });
+  });
+}
+
+async function togglePraying(id) {
+  if (!currentProfile) return;
+  const { data, error } = await sb.from('prayer_requests').select('praying_ids').eq('id', id).single();
+  if (error) { toast('Could not update.', true); return; }
+  let ids = data.praying_ids || [];
+  if (ids.includes(currentProfile.id)) ids = ids.filter(v => v !== currentProfile.id);
+  else ids = [...ids, currentProfile.id];
+  const { error: updErr } = await sb.from('prayer_requests').update({ praying_ids: ids }).eq('id', id);
+  if (updErr) { toast('Could not update.', true); return; }
+  loadPrayerRequests();
+}
+
+async function markPrayerAnswered(id) {
+  const note = prompt('Optional: how was this answered? (leave blank to skip)');
+  const { error } = await sb.from('prayer_requests').update({ is_answered: true, answered_note: note || null }).eq('id', id);
+  if (error) { toast('Could not update.', true); return; }
+  toast('Marked as answered.');
+  loadPrayerRequests();
 }
 
 // ============================================================
@@ -1197,11 +1359,61 @@ function showDayDetail(key, feasts, events) {
         e.event_time ? formatTime(e.event_time) : null,
         e.location ? escapeHtml(e.location) : null
       ].filter(Boolean).join(' · ');
-      return `<div class="cal-detail-item"><span class="cal-detail-tag" style="background:${e.is_meeting ? '#3f6e4e1a' : '#9a8f7e1a'};color:${e.is_meeting ? '#3f6e4e' : '#6b5f52'}">${e.is_meeting ? 'Meeting' : 'Event'}</span>${escapeHtml(e.title)}${when ? ` <span class="cal-detail-when">(${when})</span>` : ''}${e.note ? ' — ' + escapeHtml(e.note) : ''} <span style="color:var(--ink-faint)">(${escapeHtml(e.added_by)})</span>${myId && e.added_by_id === myId ? `<button class="cal-detail-delete" data-del="${e.id}">remove</button>` : ''}</div>`;
+      const attendees = Array.isArray(e.attendees) ? e.attendees : [];
+      const attendanceHtml = e.is_meeting ? `
+        <div class="cal-attendance">
+          <div class="cal-attendance-label">Attendance (${attendees.length})</div>
+          <div class="cal-attendee-chips">
+            ${attendees.map(name => `<span class="cal-attendee-chip">${escapeHtml(name)} <button data-remove-attendee="${e.id}" data-name="${escapeHtml(name)}">×</button></span>`).join('') || '<span class="cal-attendee-empty">No one checked in yet.</span>'}
+          </div>
+          <form class="cal-add-attendee-form" data-event="${e.id}">
+            <input type="text" placeholder="Add name…" class="cal-add-attendee-input">
+            <button class="btn btn-ghost btn-sm" type="submit">Add</button>
+          </form>
+        </div>` : '';
+      return `<div class="cal-detail-item"><span class="cal-detail-tag" style="background:${e.is_meeting ? '#3f6e4e1a' : '#9a8f7e1a'};color:${e.is_meeting ? '#3f6e4e' : '#6b5f52'}">${e.is_meeting ? 'Meeting' : 'Event'}</span>${escapeHtml(e.title)}${when ? ` <span class="cal-detail-when">(${when})</span>` : ''}${e.note ? ' — ' + escapeHtml(e.note) : ''} <span style="color:var(--ink-faint)">(${escapeHtml(e.added_by)})</span>${myId && e.added_by_id === myId ? `<button class="cal-detail-delete" data-del="${e.id}">remove</button>` : ''}${attendanceHtml}</div>`;
     }).join('');
   detail.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', () => deleteEvent(btn.dataset.del));
   });
+  detail.querySelectorAll('.cal-add-attendee-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = form.querySelector('input');
+      const name = input.value.trim();
+      if (!name) return;
+      await addAttendee(form.dataset.event, name);
+    });
+  });
+  detail.querySelectorAll('[data-remove-attendee]').forEach(btn => {
+    btn.addEventListener('click', () => removeAttendee(btn.dataset.removeAttendee, btn.dataset.name));
+  });
+}
+
+async function addAttendee(eventId, name) {
+  const ev = groupEventsCache.find(e => e.id === eventId);
+  if (!ev) return;
+  const attendees = Array.isArray(ev.attendees) ? ev.attendees : [];
+  if (attendees.includes(name)) return;
+  const updated = [...attendees, name];
+  const { error } = await sb.from('calendar_events').update({ attendees: updated }).eq('id', eventId);
+  if (error) { toast('Could not update attendance.', true); return; }
+  ev.attendees = updated;
+  loadCalendarEvents();
+  const key = ev.event_date;
+  showDayDetail(key, [], groupEventsCache.filter(e => e.event_date === key));
+}
+
+async function removeAttendee(eventId, name) {
+  const ev = groupEventsCache.find(e => e.id === eventId);
+  if (!ev) return;
+  const attendees = (Array.isArray(ev.attendees) ? ev.attendees : []).filter(n => n !== name);
+  const { error } = await sb.from('calendar_events').update({ attendees }).eq('id', eventId);
+  if (error) { toast('Could not update attendance.', true); return; }
+  ev.attendees = attendees;
+  loadCalendarEvents();
+  const key = ev.event_date;
+  showDayDetail(key, [], groupEventsCache.filter(e => e.event_date === key));
 }
 
 // ============================================================
@@ -1243,6 +1455,76 @@ function formatTime(t) {
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+// ============================================================
+// Photos
+// ============================================================
+document.getElementById('uploadPhotoBtn').addEventListener('click', () => {
+  document.getElementById('uploadPhotoInput').click();
+});
+
+document.getElementById('uploadPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !currentProfile) return;
+  const statusEl = document.getElementById('photoUploadStatus');
+  statusEl.classList.remove('hidden', 'error');
+  statusEl.textContent = 'Uploading…';
+
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${currentProfile.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: uploadErr } = await sb.storage.from('group-photos').upload(path, file);
+    if (uploadErr) throw uploadErr;
+
+    const { error: insertErr } = await sb.from('photos').insert({
+      storage_path: path,
+      uploaded_by: currentProfile.display_name,
+      uploaded_by_id: currentProfile.id,
+    });
+    if (insertErr) throw insertErr;
+
+    statusEl.classList.add('hidden');
+    toast('Photo added!');
+    loadPhotos();
+  } catch (err) {
+    statusEl.textContent = err.message || 'Could not upload photo.';
+    statusEl.classList.add('error');
+  }
+});
+
+async function loadPhotos() {
+  const gridEl = document.getElementById('photoGrid');
+  const { data, error } = await sb.from('photos').select('*').order('created_at', { ascending: false });
+  if (error) { gridEl.innerHTML = `<div class="empty-state">Couldn't load photos.</div>`; return; }
+  if (!data || !data.length) {
+    gridEl.innerHTML = `<div class="empty-state">No photos yet — add the first one.</div>`;
+    return;
+  }
+  const myId = currentProfile?.id;
+  gridEl.innerHTML = data.map(p => {
+    const { data: urlData } = sb.storage.from('group-photos').getPublicUrl(p.storage_path);
+    return `
+    <div class="photo-tile">
+      <img src="${urlData.publicUrl}" alt="Group photo" loading="lazy">
+      <div class="photo-tile-meta">
+        <span>${escapeHtml(p.uploaded_by)}</span>
+        ${myId && p.uploaded_by_id === myId ? `<button class="photo-delete" data-photo="${p.id}" data-path="${escapeHtml(p.storage_path)}">Delete</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  gridEl.querySelectorAll('.photo-delete').forEach(btn => {
+    btn.addEventListener('click', () => deletePhoto(btn.dataset.photo, btn.dataset.path));
+  });
+}
+
+async function deletePhoto(id, path) {
+  await sb.storage.from('group-photos').remove([path]);
+  const { error } = await sb.from('photos').delete().eq('id', id);
+  if (error) { toast('Could not delete photo.', true); return; }
+  toast('Photo removed.');
+  loadPhotos();
 }
 
 // ============================================================
