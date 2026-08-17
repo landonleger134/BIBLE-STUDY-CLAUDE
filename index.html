@@ -94,6 +94,9 @@
         <button class="nav-item" data-tab="contacts">
           <span class="nav-eyebrow">10</span> Contacts
         </button>
+        <button class="nav-item" data-tab="service">
+          <span class="nav-eyebrow">11</span> Service
+        </button>
       </nav>
     </div>
 
@@ -110,6 +113,7 @@
         <option value="calendar">📅 Calendar</option>
         <option value="photos">🖼️ Photos</option>
         <option value="contacts">📇 Contacts</option>
+        <option value="service">🤝 Service</option>
       </select>
     </div>
 
@@ -458,6 +462,48 @@
       </div>
 
       <div id="contactsList" class="stack"></div>
+    </section>
+
+    <!-- SERVICE OPPORTUNITIES -->
+    <section class="panel" id="panel-service">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">11 — Service</div>
+          <h2>Service Opportunities</h2>
+          <p class="panel-desc">Real, active volunteer opportunities around Baton Rouge. Tap "I'm interested" so the group can actually see who's in and organize a day to go together — add ones you find too.</p>
+        </div>
+        <button class="btn btn-primary" id="newServiceBtn">+ Add opportunity</button>
+      </header>
+
+      <div id="serviceComposer" class="composer hidden">
+        <label>Title
+          <input type="text" id="svcTitle" placeholder="e.g. Saturday Meal Prep">
+        </label>
+        <label>Organization
+          <input type="text" id="svcOrg" placeholder="e.g. St. Vincent de Paul">
+        </label>
+        <label>Category (optional)
+          <input type="text" id="svcCategory" placeholder="e.g. Feeding the Hungry, Construction">
+        </label>
+        <label>Description (optional)
+          <textarea id="svcDescription" rows="2" placeholder="What would we be doing?"></textarea>
+        </label>
+        <label>Schedule (optional)
+          <input type="text" id="svcSchedule" placeholder="e.g. Every Saturday, 9 AM">
+        </label>
+        <label>Location (optional)
+          <input type="text" id="svcLocation" placeholder="e.g. Baton Rouge, LA">
+        </label>
+        <label>Sign-up link (optional)
+          <input type="url" id="svcUrl" placeholder="https://...">
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="saveServiceBtn">Add opportunity</button>
+          <button class="btn btn-ghost" id="cancelServiceBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div id="serviceList" class="stack"></div>
     </section>
 
   </main>

@@ -169,6 +169,7 @@ async function enterApp() {
   loadCalendarEvents();
   loadPhotos();
   loadContacts();
+  loadServiceOpportunities();
 }
 
 async function handleSession(session) {
@@ -199,7 +200,7 @@ sb.auth.getSession().then(({ data }) => handleSession(data.session));
 // ============================================================
 // Tab navigation
 // ============================================================
-const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos', 'contacts'];
+const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos', 'contacts', 'service'];
 function gotoTab(tab) {
   tabs.forEach(t => {
     document.getElementById(`panel-${t}`).classList.toggle('is-active', t === tab);
@@ -1662,6 +1663,110 @@ async function loadContacts() {
       });
     });
   }
+}
+
+// ============================================================
+// Service Opportunities
+// ============================================================
+let serviceOpportunitiesCache = [];
+
+document.getElementById('newServiceBtn').addEventListener('click', () => {
+  document.getElementById('serviceComposer').classList.toggle('hidden');
+});
+document.getElementById('cancelServiceBtn').addEventListener('click', () => {
+  document.getElementById('serviceComposer').classList.add('hidden');
+});
+
+document.getElementById('saveServiceBtn').addEventListener('click', async () => {
+  if (!currentProfile) return;
+  const title = document.getElementById('svcTitle').value.trim();
+  const organization = document.getElementById('svcOrg').value.trim();
+  if (!title || !organization) { toast('Add a title and organization.', true); return; }
+
+  const { error } = await sb.from('service_opportunities').insert({
+    title,
+    organization,
+    category: document.getElementById('svcCategory').value.trim() || null,
+    description: document.getElementById('svcDescription').value.trim() || null,
+    schedule_note: document.getElementById('svcSchedule').value.trim() || null,
+    location: document.getElementById('svcLocation').value.trim() || null,
+    url: document.getElementById('svcUrl').value.trim() || null,
+    added_by: currentProfile.display_name,
+    added_by_id: currentProfile.id,
+  });
+  if (error) { toast('Could not add that.', true); return; }
+
+  ['svcTitle', 'svcOrg', 'svcCategory', 'svcDescription', 'svcSchedule', 'svcLocation', 'svcUrl'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('serviceComposer').classList.add('hidden');
+  toast('Opportunity added!');
+  loadServiceOpportunities();
+});
+
+async function loadServiceOpportunities() {
+  const listEl = document.getElementById('serviceList');
+  const { data, error } = await sb.from('service_opportunities').select('*').order('created_at', { ascending: false });
+  if (error) { listEl.innerHTML = `<div class="empty-state">Couldn't load service opportunities.</div>`; return; }
+  serviceOpportunitiesCache = data || [];
+  if (!serviceOpportunitiesCache.length) {
+    listEl.innerHTML = `<div class="empty-state">No opportunities posted yet.</div>`;
+    return;
+  }
+
+  const myId = currentProfile?.id;
+  const isAdmin = !!currentProfile?.is_admin;
+
+  listEl.innerHTML = serviceOpportunitiesCache.map(o => {
+    const interested = o.interested_ids || [];
+    const imInterested = myId && interested.includes(myId);
+    const canDelete = myId && (o.added_by_id === myId || isAdmin);
+    return `
+    <div class="service-card">
+      <div class="service-card-head">
+        <div>
+          <div class="service-title">${escapeHtml(o.title)}</div>
+          <div class="service-org">${escapeHtml(o.organization)}${o.category ? ' · ' + escapeHtml(o.category) : ''}</div>
+        </div>
+        ${canDelete ? `<button class="service-delete" data-id="${o.id}" title="Remove">🗑</button>` : ''}
+      </div>
+      ${o.description ? `<p class="service-desc">${escapeHtml(o.description)}</p>` : ''}
+      <div class="service-meta">
+        ${o.schedule_note ? `<span>🗓 ${escapeHtml(o.schedule_note)}</span>` : ''}
+        ${o.location ? `<span>📍 ${escapeHtml(o.location)}</span>` : ''}
+      </div>
+      <div class="service-actions">
+        <button class="btn btn-ghost btn-sm service-interest-btn ${imInterested ? 'is-active' : ''}" data-id="${o.id}">
+          ${imInterested ? '✓ Interested' : 'I\'m interested'} (${interested.length})
+        </button>
+        ${o.url ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(o.url)}" target="_blank" rel="noopener">Sign up →</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.service-interest-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleServiceInterest(btn.dataset.id));
+  });
+  listEl.querySelectorAll('.service-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this opportunity?')) return;
+      const { error } = await sb.from('service_opportunities').delete().eq('id', btn.dataset.id);
+      if (error) { toast('Could not remove it.', true); return; }
+      loadServiceOpportunities();
+    });
+  });
+}
+
+async function toggleServiceInterest(id) {
+  if (!currentProfile) return;
+  const opp = serviceOpportunitiesCache.find(o => o.id === id);
+  if (!opp) return;
+  let ids = opp.interested_ids || [];
+  if (ids.includes(currentProfile.id)) ids = ids.filter(v => v !== currentProfile.id);
+  else ids = [...ids, currentProfile.id];
+  const { error } = await sb.from('service_opportunities').update({ interested_ids: ids }).eq('id', id);
+  if (error) { toast('Could not update.', true); return; }
+  loadServiceOpportunities();
 }
 
 // ============================================================
