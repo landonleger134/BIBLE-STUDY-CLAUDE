@@ -456,9 +456,40 @@ async function loadDevotional() {
         <div class="guide-section"><h4>Reflection</h4><p>${escapeHtml(data.reflection).replace(/\n+/g, '</p><p>')}</p></div>
         <div class="guide-section"><h4>Today's Challenge</h4><p>${escapeHtml(data.challenge)}</p></div>
         <div class="guide-section"><h4>Closing Prayer</h4><p>${escapeHtml(data.closing_prayer)}</p></div>
+        <div class="guide-actions">
+          <button class="btn btn-ghost btn-sm" id="shareDevoBtn">Share / Copy</button>
+        </div>
       </div>`;
+
+    document.getElementById('shareDevoBtn').addEventListener('click', () => shareDevotional(data));
   } catch (e) {
     bodyEl.innerHTML = `<div class="empty-state">${escapeHtml(e.message || "Couldn't load today's devotional.")}</div>`;
+  }
+}
+
+function shareDevotional(data) {
+  const parts = [
+    data.title,
+    data.citation || '',
+    '',
+    data.scripture_text || '',
+    '',
+    'Reflection:', data.reflection,
+    '',
+    "Today's Challenge:", data.challenge,
+    '',
+    'Closing Prayer:', data.closing_prayer,
+  ].filter(line => line !== undefined);
+  const text = parts.join('\n');
+
+  if (navigator.share) {
+    navigator.share({ title: data.title, text }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text)
+      .then(() => toast('Devotional copied to clipboard!'))
+      .catch(() => toast('Could not copy. Try selecting the text manually.', true));
+  } else {
+    toast('Sharing not supported on this browser.', true);
   }
 }
 
