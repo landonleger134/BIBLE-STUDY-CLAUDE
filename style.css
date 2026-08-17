@@ -512,3 +512,29 @@ button { font-family: inherit; cursor: pointer; }
 .service-delete { border: none; background: none; color: var(--ink-faint); cursor: pointer; font-size: 14px; opacity: 0.6; flex-shrink: 0; }
 .service-delete:hover { opacity: 1; color: #8c2a2a; }
 
+/* Parishes */
+.parish-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.parish-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.parish-name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; }
+.parish-meta { font-size: 12.5px; color: var(--ink-faint); margin-top: 3px; }
+.parish-delete { border: none; background: none; color: var(--ink-faint); cursor: pointer; font-size: 14px; opacity: 0.6; flex-shrink: 0; }
+.parish-delete:hover { opacity: 1; color: #8c2a2a; }
+.parish-links { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
+.parish-links a { font-size: 13px; color: var(--season); text-decoration: none; font-weight: 600; }
+.parish-links a:hover { text-decoration: underline; }
+
+.parish-adoration { margin-top: 14px; padding: 10px 14px; background: var(--season-soft); border-radius: 8px; }
+.parish-adoration-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-faint); margin-bottom: 6px; }
+.parish-adoration-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.parish-adoration-value { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: 0.04em; }
+.parish-adoration-edit { display: flex; gap: 8px; margin-top: 8px; }
+.parish-adoration-edit input { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+
+.parish-updates { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.parish-updates-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--gold); margin-bottom: 8px; font-weight: 600; }
+.parish-update { font-size: 13.5px; background: var(--paper); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; line-height: 1.5; }
+.parish-update-author { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 3px; }
+.parish-update-empty { font-size: 13px; color: var(--ink-faint); margin-bottom: 8px; }
+.parish-update-form { display: flex; gap: 8px; margin-top: 8px; }
+.parish-update-form input { flex: 1; font-family: 'Inter', sans-serif; font-size: 13.5px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-raised); color: var(--ink); }
+

@@ -97,6 +97,9 @@
         <button class="nav-item" data-tab="service">
           <span class="nav-eyebrow">11</span> Service
         </button>
+        <button class="nav-item" data-tab="parishes">
+          <span class="nav-eyebrow">12</span> Parishes
+        </button>
       </nav>
     </div>
 
@@ -114,6 +117,7 @@
         <option value="photos">🖼️ Photos</option>
         <option value="contacts">📇 Contacts</option>
         <option value="service">🤝 Service</option>
+        <option value="parishes">⛪ Parishes</option>
       </select>
     </div>
 
@@ -504,6 +508,39 @@
       </div>
 
       <div id="serviceList" class="stack"></div>
+    </section>
+
+    <!-- PARISHES -->
+    <section class="panel" id="panel-parishes">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">12 — Parishes</div>
+          <h2>Parishes</h2>
+          <p class="panel-desc">Adoration codes, links to each parish, and a spot to post updates or activities — visible to the group only.</p>
+        </div>
+        <button class="btn btn-primary" id="newParishBtn">+ Add parish</button>
+      </header>
+
+      <div id="parishComposer" class="composer hidden">
+        <label>Parish name
+          <input type="text" id="parName" placeholder="e.g. St. Thomas More">
+        </label>
+        <label>Website (optional)
+          <input type="url" id="parWebsite" placeholder="https://...">
+        </label>
+        <label>Phone (optional)
+          <input type="text" id="parPhone" placeholder="(225) 555-0100">
+        </label>
+        <label>Address (optional)
+          <input type="text" id="parAddress" placeholder="Street, Baton Rouge, LA">
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="saveParishBtn">Add parish</button>
+          <button class="btn btn-ghost" id="cancelParishBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div id="parishList" class="stack"></div>
     </section>
 
   </main>

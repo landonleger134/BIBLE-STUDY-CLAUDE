@@ -170,6 +170,7 @@ async function enterApp() {
   loadPhotos();
   loadContacts();
   loadServiceOpportunities();
+  loadParishes();
 }
 
 async function handleSession(session) {
@@ -200,7 +201,7 @@ sb.auth.getSession().then(({ data }) => handleSession(data.session));
 // ============================================================
 // Tab navigation
 // ============================================================
-const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos', 'contacts', 'service'];
+const tabs = ['home', 'readings', 'devotional', 'guides', 'ideas', 'prayer', 'homework', 'calendar', 'photos', 'contacts', 'service', 'parishes'];
 function gotoTab(tab) {
   tabs.forEach(t => {
     document.getElementById(`panel-${t}`).classList.toggle('is-active', t === tab);
@@ -1767,6 +1768,140 @@ async function toggleServiceInterest(id) {
   const { error } = await sb.from('service_opportunities').update({ interested_ids: ids }).eq('id', id);
   if (error) { toast('Could not update.', true); return; }
   loadServiceOpportunities();
+}
+
+// ============================================================
+// Parishes
+// ============================================================
+let parishesCache = [];
+let parishUpdatesCache = {};
+
+document.getElementById('newParishBtn').addEventListener('click', () => {
+  document.getElementById('parishComposer').classList.toggle('hidden');
+});
+document.getElementById('cancelParishBtn').addEventListener('click', () => {
+  document.getElementById('parishComposer').classList.add('hidden');
+});
+
+document.getElementById('saveParishBtn').addEventListener('click', async () => {
+  if (!currentProfile) return;
+  const name = document.getElementById('parName').value.trim();
+  if (!name) { toast('Give the parish a name.', true); return; }
+  const { error } = await sb.from('parishes').insert({
+    name,
+    website: document.getElementById('parWebsite').value.trim() || null,
+    phone: document.getElementById('parPhone').value.trim() || null,
+    address: document.getElementById('parAddress').value.trim() || null,
+    added_by: currentProfile.display_name,
+    added_by_id: currentProfile.id,
+  });
+  if (error) { toast('Could not add that parish.', true); return; }
+  ['parName', 'parWebsite', 'parPhone', 'parAddress'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('parishComposer').classList.add('hidden');
+  toast('Parish added!');
+  loadParishes();
+});
+
+async function loadParishes() {
+  const listEl = document.getElementById('parishList');
+  const { data: parishes, error } = await sb.from('parishes').select('*').order('name', { ascending: true });
+  if (error) { listEl.innerHTML = `<div class="empty-state">Couldn't load parishes.</div>`; return; }
+  parishesCache = parishes || [];
+  if (!parishesCache.length) {
+    listEl.innerHTML = `<div class="empty-state">No parishes added yet.</div>`;
+    return;
+  }
+
+  const { data: updates } = await sb.from('parish_updates').select('*').order('created_at', { ascending: false });
+  parishUpdatesCache = {};
+  (updates || []).forEach(u => { (parishUpdatesCache[u.parish_id] ||= []).push(u); });
+
+  const myId = currentProfile?.id;
+  const isAdmin = !!currentProfile?.is_admin;
+
+  listEl.innerHTML = parishesCache.map(p => {
+    const parUpdates = parishUpdatesCache[p.id] || [];
+    const canDeleteParish = myId && (p.added_by_id === myId || isAdmin);
+    return `
+    <div class="parish-card">
+      <div class="parish-card-head">
+        <div>
+          <div class="parish-name">${escapeHtml(p.name)}</div>
+          ${p.address ? `<div class="parish-meta">${escapeHtml(p.address)}</div>` : ''}
+        </div>
+        ${canDeleteParish ? `<button class="parish-delete" data-id="${p.id}" title="Remove parish">🗑</button>` : ''}
+      </div>
+      <div class="parish-links">
+        ${p.website ? `<a href="${escapeHtml(p.website)}" target="_blank" rel="noopener">Website →</a>` : ''}
+        ${p.phone ? `<a href="tel:${escapeHtml(p.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(p.phone)}</a>` : ''}
+      </div>
+
+      <div class="parish-adoration">
+        <div class="parish-adoration-label">🕯️ Adoration chapel code</div>
+        <div class="parish-adoration-row" data-parish="${p.id}">
+          <span class="parish-adoration-value">${p.adoration_code ? escapeHtml(p.adoration_code) : 'Not set'}</span>
+          <button class="btn btn-ghost btn-sm parish-edit-code-btn" data-id="${p.id}">Edit</button>
+        </div>
+        <div class="parish-adoration-edit hidden" data-parish-edit="${p.id}">
+          <input type="text" class="parish-code-input" data-id="${p.id}" value="${escapeHtml(p.adoration_code || '')}" placeholder="Door code">
+          <button class="btn btn-primary btn-sm parish-save-code-btn" data-id="${p.id}">Save</button>
+        </div>
+      </div>
+
+      <div class="parish-updates">
+        <div class="parish-updates-label">Updates &amp; Activities</div>
+        ${parUpdates.length ? parUpdates.map(u => `
+          <div class="parish-update">
+            <div class="parish-update-author">${escapeHtml(u.author)} · ${new Date(u.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+            <div>${escapeHtml(u.update_text)}</div>
+          </div>`).join('') : `<div class="parish-update-empty">Nothing posted yet.</div>`}
+        <form class="parish-update-form" data-parish="${p.id}">
+          <input type="text" placeholder="Post an update or activity…">
+          <button class="btn btn-primary btn-sm" type="submit">Post</button>
+        </form>
+      </div>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.parish-edit-code-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector(`[data-parish-edit="${btn.dataset.id}"]`).classList.toggle('hidden');
+    });
+  });
+  listEl.querySelectorAll('.parish-save-code-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const input = document.querySelector(`.parish-code-input[data-id="${btn.dataset.id}"]`);
+      const { error } = await sb.from('parishes').update({ adoration_code: input.value.trim() || null }).eq('id', btn.dataset.id);
+      if (error) { toast('Could not save code.', true); return; }
+      toast('Adoration code updated.');
+      loadParishes();
+    });
+  });
+  listEl.querySelectorAll('.parish-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this parish and its updates?')) return;
+      const { error } = await sb.from('parishes').delete().eq('id', btn.dataset.id);
+      if (error) { toast('Could not remove it.', true); return; }
+      loadParishes();
+    });
+  });
+  listEl.querySelectorAll('.parish-update-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentProfile) return;
+      const input = form.querySelector('input');
+      const text = input.value.trim();
+      if (!text) return;
+      const { error } = await sb.from('parish_updates').insert({
+        parish_id: form.dataset.parish,
+        update_text: text,
+        author: currentProfile.display_name,
+        author_id: currentProfile.id,
+      });
+      if (error) { toast('Could not post that.', true); return; }
+      loadParishes();
+    });
+  });
 }
 
 // ============================================================
