@@ -184,8 +184,32 @@
           <h2>Study Guides</h2>
           <p class="panel-desc">Every guide your group has used, plus a generator to build your next one — pulling in ideas the group has already suggested.</p>
         </div>
-        <button class="btn btn-primary" id="newGuideBtn">+ New guide</button>
+        <div class="panel-head-actions">
+          <button class="btn btn-ghost" id="uploadGuideBtn">Upload .docx</button>
+          <input type="file" id="uploadGuideInput" accept=".docx" class="hidden">
+          <button class="btn btn-primary" id="newGuideBtn">+ New guide</button>
+        </div>
       </header>
+
+      <div id="guideUploadPreview" class="composer hidden">
+        <h3>Review before saving</h3>
+        <p class="panel-desc" style="margin-top:-4px;">Pulled from your .docx — headings were detected automatically from bold lines. Fix anything that looks off, then save.</p>
+        <label>Title
+          <input type="text" id="uploadTitle">
+        </label>
+        <label>Scripture reference
+          <input type="text" id="uploadScriptureRef" placeholder="e.g. Matthew 6:19-24">
+        </label>
+        <label>Series / week label
+          <input type="text" id="uploadSeriesWeek" placeholder="e.g. Week 9, Socratic Session 5">
+        </label>
+        <div id="uploadSectionsPreview" class="upload-sections-preview"></div>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="saveUploadedGuideBtn">Save guide</button>
+          <button class="btn btn-ghost" id="cancelUploadGuideBtn">Cancel</button>
+        </div>
+        <div id="guideUploadStatus" class="status-msg hidden"></div>
+      </div>
 
       <div id="guideGenerator" class="composer hidden">
         <h3>Generate a study guide</h3>
@@ -314,6 +338,7 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1/mammoth.browser.min.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

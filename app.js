@@ -415,6 +415,7 @@ async function loadDevotional() {
 // Study Guides
 // ============================================================
 document.getElementById('newGuideBtn').addEventListener('click', () => {
+  document.getElementById('guideUploadPreview').classList.add('hidden');
   document.getElementById('guideGenerator').classList.toggle('hidden');
 });
 document.getElementById('cancelGuideBtn').addEventListener('click', () => {
@@ -507,13 +508,42 @@ async function loadGuides() {
       head.nextElementSibling.classList.toggle('is-open');
     });
   });
+  listEl.querySelectorAll('.guide-print-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const guide = data.find(g => g.id === btn.dataset.guideId);
+      if (guide) printGuide(guide);
+    });
+  });
 }
 function formatGuideText(text) {
   if (!text) return '';
-  return escapeHtml(text)
-    .split(/\n{2,}/)
-    .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
-    .join('');
+  const paragraphs = text.split(/\n{2,}/);
+  return paragraphs.map(para => {
+    const lines = para.split('\n').map(l => l.trim()).filter(l => l.length);
+    if (!lines.length) return '';
+
+    if (/^Leader tip:/i.test(lines[0])) {
+      return `<div class="leader-tip">${lines.map(escapeHtml).join('<br>')}</div>`;
+    }
+
+    const numberedCount = lines.filter(l => /^\d+\.\s/.test(l)).length;
+    if (numberedCount > 1 && numberedCount >= Math.ceil(lines.length * 0.6)) {
+      const items = [];
+      lines.forEach(l => {
+        if (/^\d+\.\s/.test(l)) {
+          items.push(l.replace(/^\d+\.\s/, ''));
+        } else if (items.length) {
+          items[items.length - 1] += ' ' + l;
+        } else {
+          items.push(l);
+        }
+      });
+      return `<ol>${items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ol>`;
+    }
+
+    return `<p>${lines.map(escapeHtml).join('<br>')}</p>`;
+  }).join('');
 }
 
 function guideCardHtml(g) {
@@ -545,7 +575,7 @@ function guideCardHtml(g) {
   }
 
   return `
-  <div class="guide-card">
+  <div class="guide-card" data-guide-id="${g.id}">
     <div class="guide-head">
       <div>
         <div class="guide-title">${escapeHtml(g.title)}</div>
@@ -555,8 +585,233 @@ function guideCardHtml(g) {
     </div>
     <div class="guide-body">
       ${bodyHtml}
+      <div class="guide-actions">
+        <button class="btn btn-ghost btn-sm guide-print-btn" data-guide-id="${g.id}">Print / Save as PDF</button>
+      </div>
     </div>
   </div>`;
+}
+
+function printGuide(g) {
+  const sections = Array.isArray(g.sections) ? g.sections : [];
+  let sectionsHtml;
+  if (sections.length) {
+    sectionsHtml = sections.map(s => `
+      <div class="print-section">
+        <h3>${escapeHtml(s.heading || '')}</h3>
+        ${formatGuideText(s.body || '')}
+      </div>
+    `).join('');
+  } else {
+    const reflect = Array.isArray(g.reflection_questions) ? g.reflection_questions : [];
+    const discuss = Array.isArray(g.discussion_questions) ? g.discussion_questions : [];
+    sectionsHtml = `
+      ${g.context ? `<div class="print-section"><h3>Context</h3><p>${escapeHtml(g.context)}</p></div>` : ''}
+      ${g.opening_prayer ? `<div class="print-section"><h3>Opening Prayer</h3><p>${escapeHtml(g.opening_prayer)}</p></div>` : ''}
+      ${reflect.length ? `<div class="print-section"><h3>Reflection Questions</h3><ol>${reflect.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol></div>` : ''}
+      ${discuss.length ? `<div class="print-section"><h3>Discussion Questions</h3><ol>${discuss.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol></div>` : ''}
+      ${g.application ? `<div class="print-section"><h3>Living It Out</h3><p>${escapeHtml(g.application)}</p></div>` : ''}
+      ${g.closing_prayer ? `<div class="print-section"><h3>Closing Prayer</h3><p>${escapeHtml(g.closing_prayer)}</p></div>` : ''}
+    `;
+  }
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${escapeHtml(g.title)}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.6; }
+  h1 { font-size: 26px; margin-bottom: 4px; }
+  .meta { font-family: monospace; font-size: 12px; color: #666; margin-bottom: 28px; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #8a6d1f; margin: 22px 0 6px; }
+  p { font-size: 14.5px; margin: 0 0 10px; }
+  ol { font-size: 14.5px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .leader-tip { font-style: italic; color: #555; border-left: 3px solid #c9a227; padding: 6px 12px; margin: 10px 0; background: #faf6ea; }
+  @media print { body { margin: 0; padding: 24px; } }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(g.title)}</h1>
+  <div class="meta">${g.series_week ? escapeHtml(g.series_week) + ' · ' : ''}${g.scripture_ref ? escapeHtml(g.scripture_ref) : ''}</div>
+  ${sectionsHtml}
+</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
+
+// ============================================================
+// Upload a study guide from .docx
+// ============================================================
+let pendingParsedGuide = null;
+
+document.getElementById('uploadGuideBtn').addEventListener('click', () => {
+  document.getElementById('uploadGuideInput').click();
+});
+
+document.getElementById('uploadGuideInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ''; // allow re-selecting the same file later
+  if (!file) return;
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await window.mammoth.convertToHtml({ arrayBuffer });
+    const parsed = parseGuideHtml(result.value);
+    pendingParsedGuide = parsed;
+
+    document.getElementById('uploadTitle').value = parsed.title;
+    document.getElementById('uploadScriptureRef').value = parsed.scriptureRef;
+    document.getElementById('uploadSeriesWeek').value = '';
+
+    const previewEl = document.getElementById('uploadSectionsPreview');
+    if (parsed.sections.length) {
+      previewEl.innerHTML = `<div class="upload-sections-count">${parsed.sections.length} sections detected</div>
+        <ul>${parsed.sections.map(s => `<li>${escapeHtml(s.heading)}</li>`).join('')}</ul>`;
+    } else {
+      previewEl.innerHTML = `<div class="upload-sections-count">No section headings detected — the whole document will be saved as one section. You can still save and edit later if needed.</div>`;
+    }
+
+    document.getElementById('guideGenerator').classList.add('hidden');
+    document.getElementById('guideUploadPreview').classList.remove('hidden');
+    document.getElementById('guideUploadStatus').classList.add('hidden');
+  } catch (err) {
+    toast("Couldn't read that file — make sure it's a .docx.", true);
+  }
+});
+
+document.getElementById('cancelUploadGuideBtn').addEventListener('click', () => {
+  pendingParsedGuide = null;
+  document.getElementById('guideUploadPreview').classList.add('hidden');
+});
+
+document.getElementById('saveUploadedGuideBtn').addEventListener('click', async () => {
+  if (!pendingParsedGuide || !currentProfile) return;
+  const statusEl = document.getElementById('guideUploadStatus');
+  const btn = document.getElementById('saveUploadedGuideBtn');
+  btn.disabled = true;
+  statusEl.classList.add('hidden', 'error');
+
+  const title = document.getElementById('uploadTitle').value.trim();
+  if (!title) {
+    statusEl.textContent = 'Give the guide a title first.';
+    statusEl.classList.remove('hidden');
+    statusEl.classList.add('error');
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    const { error } = await sb.from('study_guides').insert({
+      title,
+      scripture_ref: document.getElementById('uploadScriptureRef').value.trim(),
+      series_week: document.getElementById('uploadSeriesWeek').value.trim(),
+      context: '',
+      reflection_questions: [],
+      discussion_questions: [],
+      sections: pendingParsedGuide.sections,
+      created_by: currentProfile.display_name,
+      created_by_id: currentProfile.id,
+    });
+    if (error) throw error;
+
+    pendingParsedGuide = null;
+    document.getElementById('guideUploadPreview').classList.add('hidden');
+    toast('Study guide uploaded!');
+    loadGuides();
+  } catch (err) {
+    statusEl.textContent = err.message || 'Could not save the guide. Try again.';
+    statusEl.classList.remove('hidden');
+    statusEl.classList.add('error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// Parses mammoth's HTML output into { title, scriptureRef, sections }.
+// Heuristic mirrors the format used across this group's existing guides:
+// two bold lines at the top (a label, then the real title), a "Passage:" line,
+// then the body split into sections wherever a short fully-bold line appears.
+function parseGuideHtml(html) {
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  const blocks = Array.from(container.children).filter(el => /^(P|H1|H2|H3|H4)$/.test(el.tagName));
+
+  function textOf(el) { return el.textContent.replace(/\s+/g, ' ').trim(); }
+  function isFullyBold(el) {
+    const text = textOf(el);
+    if (!text) return false;
+    const strongs = el.querySelectorAll('strong');
+    if (!strongs.length) return false;
+    let strongText = '';
+    strongs.forEach(s => strongText += s.textContent);
+    return strongText.replace(/\s+/g, ' ').trim() === text;
+  }
+
+  let header = null, title = null, scriptureRef = '';
+  let boldCount = 0;
+  const consumed = new Set();
+  let bodyStart = 0;
+
+  for (let i = 0; i < blocks.length; i++) {
+    const text = textOf(blocks[i]);
+    if (!text) { consumed.add(i); continue; }
+
+    const passageMatch = text.match(/^Passage:?\s*(.+)$/i);
+    if (passageMatch) {
+      scriptureRef = passageMatch[1].replace(/[·|]|~?\d+[\u2013-]\d+\s*min.*$/i, '').trim();
+      consumed.add(i);
+      continue;
+    }
+    if (isFullyBold(blocks[i]) && boldCount < 2) {
+      if (boldCount === 0) header = text; else title = text;
+      boldCount++;
+      consumed.add(i);
+      continue;
+    }
+    if (boldCount >= 1) { bodyStart = i; break; }
+    bodyStart = i + 1;
+  }
+  if (!title) title = header || 'Untitled Guide';
+
+  const sections = [];
+  let currentHeading = null;
+  let currentLines = [];
+  let prevWasListItem = null;
+
+  function pushSection() {
+    if (currentHeading === null && !currentLines.length) return;
+    const body = currentLines.join('').trim();
+    if (body || currentHeading) sections.push({ heading: currentHeading || 'Intro', body });
+  }
+
+  for (let i = bodyStart; i < blocks.length; i++) {
+    if (consumed.has(i)) continue;
+    const el = blocks[i];
+    const text = textOf(el);
+    if (!text) continue;
+
+    if (isFullyBold(el) && text.length <= 70) {
+      pushSection();
+      currentHeading = text;
+      currentLines = [];
+      prevWasListItem = null;
+      continue;
+    }
+
+    const isListItem = /^\d+\.\s/.test(text);
+    if (currentLines.length === 0) {
+      currentLines.push(text);
+    } else if (isListItem === prevWasListItem) {
+      currentLines.push('\n' + text);
+    } else {
+      currentLines.push('\n\n' + text);
+    }
+    prevWasListItem = isListItem;
+  }
+  pushSection();
+
+  return { title, scriptureRef, sections };
 }
 
 // ============================================================
