@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Upper Room — Bible Study Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== Auth Gate ===== -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="brand gate-brand">
+      <span class="brand-mark"></span>
+      <div class="brand-text">
+        <div class="brand-name">The Upper Room</div>
+        <div class="brand-sub">Bible Study Hub</div>
+      </div>
+    </div>
+
+    <div id="gateStep-email">
+      <h1 class="gate-title">Sign in to the group</h1>
+      <p class="gate-desc">Enter your email and we'll send you a one-click sign-in link. No password to remember.</p>
+      <form id="gateEmailForm" class="gate-form">
+        <input type="email" id="gateEmailInput" placeholder="you@example.com" required autocomplete="email">
+        <button class="btn btn-primary btn-lg" type="submit" id="gateSendBtn">Send sign-in link</button>
+      </form>
+      <div id="gateStatus" class="status-msg hidden"></div>
+    </div>
+
+    <div id="gateStep-sent" class="hidden">
+      <h1 class="gate-title">Check your email</h1>
+      <p class="gate-desc">We sent a sign-in link to <strong id="gateSentEmail"></strong>. Open it on this device to continue.</p>
+      <button class="btn btn-ghost" id="gateBackBtn">Use a different email</button>
+    </div>
+
+    <div id="gateStep-name" class="hidden">
+      <h1 class="gate-title">Welcome!</h1>
+      <p class="gate-desc">What should we call you in the group?</p>
+      <form id="gateNameForm" class="gate-form">
+        <input type="text" id="gateNameInput" placeholder="Your name" required autocomplete="name">
+        <button class="btn btn-primary btn-lg" type="submit">Continue</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="app hidden" id="appRoot">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="rail">
+    <div class="rail-top">
+      <div class="brand">
+        <span class="brand-mark" id="seasonDot"></span>
+        <div class="brand-text">
+          <div class="brand-name">The Upper Room</div>
+          <div class="brand-sub">Bible Study Hub</div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav-item is-active" data-tab="home">
+          <span class="nav-eyebrow">01</span> Home
+        </button>
+        <button class="nav-item" data-tab="readings">
+          <span class="nav-eyebrow">02</span> Daily Readings
+        </button>
+        <button class="nav-item" data-tab="guides">
+          <span class="nav-eyebrow">03</span> Study Guides
+        </button>
+        <button class="nav-item" data-tab="ideas">
+          <span class="nav-eyebrow">04</span> Ideas Board
+        </button>
+        <button class="nav-item" data-tab="homework">
+          <span class="nav-eyebrow">05</span> Homework
+        </button>
+        <button class="nav-item" data-tab="calendar">
+          <span class="nav-eyebrow">06</span> Calendar
+        </button>
+      </nav>
+    </div>
+
+    <div class="rail-bottom">
+      <div class="whoami">
+        <div class="whoami-label">You are</div>
+        <div class="whoami-row">
+          <span class="whoami-avatar" id="whoamiAvatar"></span>
+          <span id="whoamiName">a guest</span>
+          <button id="editNameBtn" title="Change your name">edit</button>
+        </div>
+        <button id="signOutBtn" class="whoami-signout">Sign out</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+
+    <!-- HOME -->
+    <section class="panel is-active" id="panel-home">
+      <div class="hero" id="homeHero">
+        <div class="hero-eyebrow" id="heroDate">—</div>
+        <h1 class="hero-title" id="heroSeason">Loading…</h1>
+        <p class="hero-sub" id="heroFeast"></p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" id="heroReadingsBtn" href="#" target="_blank" rel="noopener">Today's Mass Readings →</a>
+          <button class="btn btn-ghost" data-goto="calendar">View calendar</button>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card" id="nextMeetingCard">
+          <div class="card-eyebrow">Next Gathering</div>
+          <div class="card-body" id="nextMeetingBody">No meeting scheduled yet.</div>
+          <button class="card-link" data-goto="calendar">Open calendar →</button>
+        </div>
+        <div class="card" id="recentGuideCard">
+          <div class="card-eyebrow">Latest Study Guide</div>
+          <div class="card-body" id="recentGuideBody">No guides yet.</div>
+          <button class="card-link" data-goto="guides">Open study guides →</button>
+        </div>
+        <div class="card" id="topIdeaCard">
+          <div class="card-eyebrow">Top Idea</div>
+          <div class="card-body" id="topIdeaBody">No ideas submitted yet.</div>
+          <button class="card-link" data-goto="ideas">Open ideas board →</button>
+        </div>
+      </div>
+
+      <div class="card wide" id="openHomeworkCard">
+        <div class="card-eyebrow">Open Homework</div>
+        <div class="card-body" id="openHomeworkBody">Nothing assigned right now.</div>
+        <button class="card-link" data-goto="homework">Open homework →</button>
+      </div>
+    </section>
+
+    <!-- DAILY READINGS -->
+    <section class="panel" id="panel-readings">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">02 — Daily Readings</div>
+          <h2>Today's Mass Readings</h2>
+          <p class="panel-desc">Official readings for daily Mass, from the USCCB — the U.S. Bishops' own daily readings page. Read along together, or on your own before you gather.</p>
+        </div>
+      </header>
+
+      <div class="reading-hero">
+        <div class="reading-date" id="readingsDate">—</div>
+        <div class="reading-season" id="readingsSeason">—</div>
+        <a class="btn btn-primary btn-lg" id="readingsLink" href="#" target="_blank" rel="noopener">Open Today's Readings at USCCB.org →</a>
+      </div>
+
+      <div class="reading-grid">
+        <a class="reading-alt" id="readingsYesterday" href="#" target="_blank" rel="noopener">← Yesterday's readings</a>
+        <a class="reading-alt" id="readingsTomorrow" href="#" target="_blank" rel="noopener">Tomorrow's readings →</a>
+      </div>
+    </section>
+
+    <!-- STUDY GUIDES -->
+    <section class="panel" id="panel-guides">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">03 — Study Guides</div>
+          <h2>Study Guides</h2>
+          <p class="panel-desc">Every guide your group has used, plus a generator to build your next one — pulling in ideas the group has already suggested.</p>
+        </div>
+        <button class="btn btn-primary" id="newGuideBtn">+ New guide</button>
+      </header>
+
+      <div id="guideGenerator" class="composer hidden">
+        <h3>Generate a study guide</h3>
+        <label>Topic or scripture passage
+          <input type="text" id="guideTopic" placeholder="e.g. The Prodigal Son, Luke 15:11-32">
+        </label>
+        <label>Anything else to focus on? (optional)
+          <textarea id="guideNotes" rows="2" placeholder="e.g. focus on forgiveness, keep it to 4 questions"></textarea>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="guideUseIdeas" checked>
+          Pull in the group's top-voted ideas for inspiration
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="generateGuideBtn">Generate guide</button>
+          <button class="btn btn-ghost" id="cancelGuideBtn">Cancel</button>
+        </div>
+        <div id="guideGenStatus" class="status-msg hidden"></div>
+      </div>
+
+      <div id="guideList" class="stack"></div>
+    </section>
+
+    <!-- IDEAS -->
+    <section class="panel" id="panel-ideas">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">04 — Ideas Board</div>
+          <h2>What should we study next?</h2>
+          <p class="panel-desc">Suggest a topic, book, or passage. Vote on the ones you're excited about — the top ideas feed straight into the guide generator.</p>
+        </div>
+      </header>
+
+      <div class="composer">
+        <label>Your idea
+          <textarea id="ideaText" rows="2" placeholder="e.g. A study on the Beatitudes, or the Book of Ruth"></textarea>
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="addIdeaBtn">Add idea</button>
+        </div>
+      </div>
+
+      <div id="ideaList" class="stack"></div>
+    </section>
+
+    <!-- HOMEWORK -->
+    <section class="panel" id="panel-homework">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">05 — Homework</div>
+          <h2>Homework &amp; Discussion</h2>
+          <p class="panel-desc">Post a few questions for the group. Everyone answers in a short synopsis — aim for about 3–5 minutes' worth of thought, nothing longer.</p>
+        </div>
+        <button class="btn btn-primary" id="newHomeworkBtn">+ New session</button>
+      </header>
+
+      <div id="homeworkComposer" class="composer hidden">
+        <h3>New homework session</h3>
+        <label>Title
+          <input type="text" id="hwTitle" placeholder="e.g. Week 4 — The Sermon on the Mount">
+        </label>
+        <label>Questions (one per line)
+          <textarea id="hwQuestions" rows="4" placeholder="What does 'poor in spirit' mean to you?&#10;Where have you seen mercy shown recently?"></textarea>
+        </label>
+        <label>Due date (optional)
+          <input type="date" id="hwDueDate">
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="saveHomeworkBtn">Post session</button>
+          <button class="btn btn-ghost" id="cancelHomeworkBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div id="homeworkList" class="stack"></div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="panel" id="panel-calendar">
+      <header class="panel-head">
+        <div>
+          <div class="panel-eyebrow">06 — Calendar</div>
+          <h2>Calendar</h2>
+          <p class="panel-desc">Solemnities, feast days, and holy days of obligation from the Church calendar, alongside your group's own gatherings.</p>
+        </div>
+        <button class="btn btn-primary" id="newEventBtn">+ Add event</button>
+      </header>
+
+      <div id="eventComposer" class="composer hidden">
+        <h3>Add a group event</h3>
+        <label>Title
+          <input type="text" id="evTitle" placeholder="e.g. Group meeting at Sarah's">
+        </label>
+        <label>Date
+          <input type="date" id="evDate">
+        </label>
+        <label>Note (optional)
+          <input type="text" id="evNote" placeholder="e.g. bring a dish to share">
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="evIsMeeting">
+          This is a group meeting
+        </label>
+        <div class="composer-actions">
+          <button class="btn btn-primary" id="saveEventBtn">Add event</button>
+          <button class="btn btn-ghost" id="cancelEventBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="cal-controls">
+        <button class="btn btn-ghost" id="calPrev">← Prev</button>
+        <div class="cal-month-label" id="calMonthLabel">—</div>
+        <button class="btn btn-ghost" id="calNext">Next →</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span><i class="dot dot-feast"></i> Feast / solemnity</span>
+        <span><i class="dot dot-holyday"></i> Holy day of obligation</span>
+        <span><i class="dot dot-meeting"></i> Group meeting</span>
+        <span><i class="dot dot-event"></i> Other group event</span>
+      </div>
+      <div id="calDayDetail" class="cal-day-detail hidden"></div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
