@@ -345,8 +345,14 @@
           <h2>Homework &amp; Discussion</h2>
           <p class="panel-desc">Post a few questions for the group. Everyone answers in a short synopsis — aim for about 3–5 minutes' worth of thought, nothing longer.</p>
         </div>
-        <button class="btn btn-primary" id="newHomeworkBtn">+ New session</button>
       </header>
+
+      <!-- Tab switcher -->
+      <div class="hw-tab-row">
+        <button class="hw-tab active" id="hwTabActive">Active</button>
+        <button class="hw-tab" id="hwTabArchive">📚 Archive</button>
+        <button class="btn btn-primary btn-sm" id="newHomeworkBtn" style="margin-left:auto">+ New session</button>
+      </div>
 
       <div id="homeworkComposer" class="composer hidden">
         <h3>New homework session</h3>
@@ -363,12 +369,6 @@
           <button class="btn btn-primary" id="saveHomeworkBtn">Post session</button>
           <button class="btn btn-ghost" id="cancelHomeworkBtn">Cancel</button>
         </div>
-      </div>
-
-      <!-- Tab switcher -->
-      <div class="hw-tab-row">
-        <button class="hw-tab active" id="hwTabActive">Active</button>
-        <button class="hw-tab" id="hwTabArchive">📚 Archive</button>
       </div>
 
       <!-- Active homework list -->

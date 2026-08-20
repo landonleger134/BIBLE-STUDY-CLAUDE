@@ -1252,6 +1252,8 @@ function switchHwTab(tab) {
   document.getElementById('homeworkArchive').classList.toggle('hidden', !isArchive);
   document.getElementById('hwTabActive').classList.toggle('active', !isArchive);
   document.getElementById('hwTabArchive').classList.toggle('active', isArchive);
+  document.getElementById('newHomeworkBtn').classList.toggle('hidden', isArchive);
+  document.getElementById('homeworkComposer').classList.add('hidden');
   if (isArchive) renderHomeworkArchive();
 }
 

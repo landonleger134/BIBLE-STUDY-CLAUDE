@@ -353,7 +353,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* Homework archive tabs */
-.hw-tab-row { display: flex; gap: 8px; margin: 18px 0 14px; border-bottom: 2px solid var(--line); padding-bottom: 0; }
+.hw-tab-row { display: flex; align-items: center; gap: 8px; margin: 18px 0 14px; border-bottom: 2px solid var(--line); padding-bottom: 0; }
 .hw-tab { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 6px 16px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); cursor: pointer; transition: color 0.15s, border-color 0.15s; }
 .hw-tab.active { color: var(--season); border-bottom-color: var(--season); }
 .hw-tab:hover:not(.active) { color: var(--ink); }
