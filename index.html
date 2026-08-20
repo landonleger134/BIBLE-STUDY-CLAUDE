@@ -365,7 +365,17 @@
         </div>
       </div>
 
+      <!-- Tab switcher -->
+      <div class="hw-tab-row">
+        <button class="hw-tab active" id="hwTabActive" onclick="switchHwTab('active')">Active</button>
+        <button class="hw-tab" id="hwTabArchive" onclick="switchHwTab('archive')">📚 Archive</button>
+      </div>
+
+      <!-- Active homework list -->
       <div id="homeworkList" class="stack"></div>
+
+      <!-- Archive list -->
+      <div id="homeworkArchive" class="stack hidden"></div>
     </section>
 
     <!-- CALENDAR -->

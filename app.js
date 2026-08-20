@@ -1172,6 +1172,7 @@ async function loadHomework() {
     return;
   }
   const { data: answers } = await sb.from('homework_answers').select('*').order('created_at', { ascending: true });
+  window._hwAllAnswers = answers || []; // cache for archive view
   const answersBySession = {};
   (answers || []).forEach(a => {
     (answersBySession[a.session_id] ||= []).push(a);
@@ -1234,6 +1235,76 @@ async function loadHomework() {
     });
   });
 }
+// ── Homework archive ────────────────────────────────────────────────────────
+function switchHwTab(tab) {
+  const isArchive = tab === 'archive';
+  document.getElementById('homeworkList').classList.toggle('hidden', isArchive);
+  document.getElementById('homeworkArchive').classList.toggle('hidden', !isArchive);
+  document.getElementById('hwTabActive').classList.toggle('active', !isArchive);
+  document.getElementById('hwTabArchive').classList.toggle('active', isArchive);
+  if (isArchive) renderHomeworkArchive();
+}
+
+function renderHomeworkArchive() {
+  const el = document.getElementById('homeworkArchive');
+  if (!loadedHomeworkSessions.length) {
+    el.innerHTML = `<div class="empty-state">No homework sets yet.</div>`;
+    return;
+  }
+
+  const { data: allAnswers } = { data: window._hwAllAnswers || [] };
+
+  el.innerHTML = loadedHomeworkSessions.map(s => {
+    const questions = (Array.isArray(s.questions) ? s.questions : [])
+      .map((q, idx) => ({ ...normalizeHwQuestion(q), idx }))
+      .filter(q => !q.removed && q.assignedTo);
+
+    const sessionAnswers = (window._hwAllAnswers || []).filter(a => a.session_id === s.id);
+    const answeredCount = questions.filter(q => sessionAnswers.some(a => a.question_index === q.idx)).length;
+    const date = new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const questionsHtml = questions.map(q => {
+      const ans = sessionAnswers.filter(a => a.question_index === q.idx);
+      return `
+        <div class="hw-archive-q">
+          ${q.category ? `<div class="hw-archive-q-cat">${escapeHtml(q.category)}</div>` : ''}
+          <div class="hw-archive-q-text">${escapeHtml(q.text)}</div>
+          <div class="hw-archive-assigned">Assigned to: ${escapeHtml(q.assignedTo)}</div>
+          <div class="hw-archive-answers">
+            ${ans.length
+              ? ans.map(a => `
+                <div class="hw-archive-answer">
+                  <div class="hw-archive-answer-author">${escapeHtml(a.author)}</div>
+                  <div class="hw-archive-answer-text">${escapeHtml(a.answer)}</div>
+                </div>`).join('')
+              : `<div class="hw-archive-no-answer">No answer submitted.</div>`
+            }
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="hw-archive-set" id="archive-${s.id}">
+        <div class="hw-archive-set-head" onclick="toggleArchiveSet('${s.id}')">
+          <div>
+            <div class="hw-archive-set-title">${escapeHtml(s.title)}</div>
+            <div class="hw-archive-set-meta">${date} · ${questions.length} questions assigned · ${answeredCount} answered</div>
+          </div>
+          <span class="hw-archive-chevron">▶</span>
+        </div>
+        <div class="hw-archive-body">
+          ${questionsHtml || '<div class="empty-state" style="padding:16px">No questions assigned in this set.</div>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleArchiveSet(id) {
+  document.getElementById(`archive-${id}`).classList.toggle('open');
+}
+
+// ── end archive ──────────────────────────────────────────────────────────────
+
 function homeworkCardHtml(s, answers) {
   const due = s.due_date ? new Date(s.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
   const questions = Array.isArray(s.questions) ? s.questions : [];
