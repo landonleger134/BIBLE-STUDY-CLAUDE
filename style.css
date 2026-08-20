@@ -319,7 +319,7 @@ button { font-family: inherit; cursor: pointer; }
 .hw-due { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
 .hw-chevron { font-size: 14px; color: var(--ink-faint); transition: transform 0.2s; flex-shrink: 0; margin-top: 4px; }
 .hw-card.open .hw-chevron { transform: rotate(90deg); }
-.hw-body { display: none; padding: 0 22px 20px; border-top: 1px solid var(--line); }
+.hw-body { display: none; padding: 16px 22px 20px; border-top: 1px solid var(--line); }
 .hw-card.open .hw-body { display: block; }
 .hw-question { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .hw-question-text { font-size: 15px; font-weight: 600; margin-bottom: 10px; }

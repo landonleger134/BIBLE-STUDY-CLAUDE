@@ -1182,6 +1182,13 @@ async function loadHomework() {
 
   listEl.innerHTML = sessions.map(s => homeworkCardHtml(s, answersBySession[s.id] || [])).join('');
 
+  // Collapsible card headers
+  listEl.querySelectorAll('.hw-head[data-hwid]').forEach(head => {
+    head.addEventListener('click', () => {
+      head.closest('.hw-card').classList.toggle('open');
+    });
+  });
+
   listEl.querySelectorAll('.hw-answer-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1303,9 +1310,7 @@ function toggleArchiveSet(id) {
   document.getElementById(`archive-${id}`).classList.toggle('open');
 }
 
-function toggleHwCard(id) {
-  document.getElementById(`hwcard-${id}`).classList.toggle('open');
-}
+
 
 // ── end archive ──────────────────────────────────────────────────────────────
 
@@ -1368,7 +1373,7 @@ function homeworkCardHtml(s, answers) {
 
   return `
   <div class="hw-card" id="hwcard-${s.id}">
-    <div class="hw-head" onclick="toggleHwCard('${s.id}')">
+    <div class="hw-head" data-hwid="${s.id}">
       <div>
         <div class="hw-title">${escapeHtml(s.title)}</div>
         <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''} · ${assignedIdx.length} of ${activeCount} assigned</div>
