@@ -1297,7 +1297,7 @@ function renderHomeworkArchive() {
 
     return `
       <div class="hw-archive-set" id="archive-${s.id}">
-        <div class="hw-archive-set-head" onclick="toggleArchiveSet('${s.id}')">
+        <div class="hw-archive-set-head" data-archiveid="${s.id}">
           <div>
             <div class="hw-archive-set-title">${escapeHtml(s.title)}</div>
             <div class="hw-archive-set-meta">${date} · ${questions.length} questions assigned · ${answeredCount} answered</div>
@@ -1306,16 +1306,61 @@ function renderHomeworkArchive() {
         </div>
         <div class="hw-archive-body">
           ${questionsHtml || '<div class="empty-state" style="padding:16px">No questions assigned in this set.</div>'}
+          <div style="padding:16px 0 4px; border-top:1px solid var(--line); margin-top:16px;">
+            <button class="btn btn-ghost btn-sm hw-archive-download" data-archiveid="${s.id}" style="font-size:13px;">⬇ Download set as text</button>
+          </div>
         </div>
       </div>`;
   }).join('');
+
+  // Wire up toggle clicks via event delegation
+  el.querySelectorAll('.hw-archive-set-head[data-archiveid]').forEach(head => {
+    head.addEventListener('click', () => {
+      head.closest('.hw-archive-set').classList.toggle('open');
+    });
+  });
+
+  // Wire up download buttons
+  el.querySelectorAll('.hw-archive-download[data-archiveid]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sid = btn.dataset.archiveid;
+      const s = loadedHomeworkSessions.find(x => x.id === sid);
+      if (!s) return;
+      const questions = (Array.isArray(s.questions) ? s.questions : [])
+        .map((q, idx) => ({ ...normalizeHwQuestion(q), idx }))
+        .filter(q => !q.removed && q.assignedTo);
+      const sessionAnswers = (window._hwAllAnswers || []).filter(a => a.session_id === sid);
+      const date = new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+      let text = `${s.title}\n${date}\n${'='.repeat(60)}\n\n`;
+      questions.forEach((q, i) => {
+        text += `${i + 1}. ${q.text}\n`;
+        text += `   Assigned to: ${q.assignedTo}\n`;
+        if (q.category) text += `   Category: ${q.category}\n`;
+        const ans = sessionAnswers.filter(a => a.question_index === q.idx);
+        if (ans.length) {
+          ans.forEach(a => {
+            text += `\n   ${a.author.toUpperCase()}:\n`;
+            text += a.answer.split('\n').map(l => `   ${l}`).join('\n');
+            text += '\n';
+          });
+        } else {
+          text += `\n   No answer submitted.\n`;
+        }
+        text += `\n${'-'.repeat(60)}\n\n`;
+      });
+
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${s.title.replace(/[^a-z0-9]/gi, '_')}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  });
 }
-
-function toggleArchiveSet(id) {
-  document.getElementById(`archive-${id}`).classList.toggle('open');
-}
-
-
 
 // ── end archive ──────────────────────────────────────────────────────────────
 
