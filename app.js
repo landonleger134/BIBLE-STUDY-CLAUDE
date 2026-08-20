@@ -1307,7 +1307,7 @@ function renderHomeworkArchive() {
         <div class="hw-archive-body">
           ${questionsHtml || '<div class="empty-state" style="padding:16px">No questions assigned in this set.</div>'}
           <div style="padding:16px 0 4px; border-top:1px solid var(--line); margin-top:16px;">
-            <button class="btn btn-ghost btn-sm hw-archive-download" data-archiveid="${s.id}" style="font-size:13px;">⬇ Download set as text</button>
+            <button class="btn btn-ghost btn-sm hw-archive-download" data-archiveid="${s.id}" style="font-size:13px;">🖨 View & Print</button>
           </div>
         </div>
       </div>`;
@@ -1331,33 +1331,57 @@ function renderHomeworkArchive() {
         .map((q, idx) => ({ ...normalizeHwQuestion(q), idx }))
         .filter(q => !q.removed && q.assignedTo);
       const sessionAnswers = (window._hwAllAnswers || []).filter(a => a.session_id === sid);
-      const date = new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const date = new Date(s.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 
-      let text = `${s.title}\n${date}\n${'='.repeat(60)}\n\n`;
-      questions.forEach((q, i) => {
-        text += `${i + 1}. ${q.text}\n`;
-        text += `   Assigned to: ${q.assignedTo}\n`;
-        if (q.category) text += `   Category: ${q.category}\n`;
+      // Build a nicely formatted HTML page
+      const questionsHtml = questions.map((q, i) => {
         const ans = sessionAnswers.filter(a => a.question_index === q.idx);
-        if (ans.length) {
-          ans.forEach(a => {
-            text += `\n   ${a.author.toUpperCase()}:\n`;
-            text += a.answer.split('\n').map(l => `   ${l}`).join('\n');
-            text += '\n';
-          });
-        } else {
-          text += `\n   No answer submitted.\n`;
-        }
-        text += `\n${'-'.repeat(60)}\n\n`;
-      });
+        const answersHtml = ans.length
+          ? ans.map(a => `
+              <div style="background:#f7f5f0;border-radius:8px;padding:14px 18px;margin-bottom:10px;">
+                <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#2E4A8F;font-weight:700;margin-bottom:8px;">${escapeHtml(a.author)}</div>
+                <div style="font-size:14px;line-height:1.75;color:#1a1a2e;white-space:pre-wrap;">${escapeHtml(a.answer)}</div>
+              </div>`).join('')
+          : `<div style="font-size:13px;color:#888;font-style:italic;padding:8px 0;">No answer submitted.</div>`;
 
-      const blob = new Blob([text], { type: 'text/plain' });
+        return `
+          <div style="margin-bottom:36px;padding-bottom:36px;border-bottom:1px solid #e5e0d8;">
+            ${q.category ? `<div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#92600A;font-weight:700;margin-bottom:6px;">${escapeHtml(q.category)}</div>` : ''}
+            <div style="font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:6px;line-height:1.4;">${i+1}. ${escapeHtml(q.text)}</div>
+            <div style="font-size:12px;color:#888;margin-bottom:14px;font-style:italic;">Assigned to: ${escapeHtml(q.assignedTo)}</div>
+            ${answersHtml}
+          </div>`;
+      }).join('');
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(s.title)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Georgia, serif; background: #faf8f5; color: #1a1a2e; padding: 32px 20px; max-width: 720px; margin: 0 auto; }
+    @media print { body { background: white; padding: 0; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div style="border-bottom:3px solid #2E4A8F;padding-bottom:20px;margin-bottom:32px;">
+    <div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">Men With Christ Bible Study · Homework Archive</div>
+    <div style="font-size:26px;font-weight:700;color:#1a1a2e;margin-bottom:6px;">${escapeHtml(s.title)}</div>
+    <div style="font-size:13px;color:#888;">${date} · ${questions.length} questions · ${sessionAnswers.length} answers submitted</div>
+  </div>
+  ${questionsHtml}
+  <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e0d8;text-align:center;">
+    <button class="no-print" onclick="window.print()" style="background:#2E4A8F;color:white;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer;">🖨 Print / Save as PDF</button>
+  </div>
+</body>
+</html>`;
+
+      const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${s.title.replace(/[^a-z0-9]/gi, '_')}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     });
   });
 }
