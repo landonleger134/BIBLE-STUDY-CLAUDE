@@ -1125,6 +1125,9 @@ async function markPrayerAnswered(id) {
 // ============================================================
 // Homework
 // ============================================================
+document.getElementById('hwTabActive').addEventListener('click', () => switchHwTab('active'));
+document.getElementById('hwTabArchive').addEventListener('click', () => switchHwTab('archive'));
+
 document.getElementById('newHomeworkBtn').addEventListener('click', () => {
   document.getElementById('homeworkComposer').classList.toggle('hidden');
 });
