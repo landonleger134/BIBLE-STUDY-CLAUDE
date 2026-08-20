@@ -1303,6 +1303,10 @@ function toggleArchiveSet(id) {
   document.getElementById(`archive-${id}`).classList.toggle('open');
 }
 
+function toggleHwCard(id) {
+  document.getElementById(`hwcard-${id}`).classList.toggle('open');
+}
+
 // ── end archive ──────────────────────────────────────────────────────────────
 
 function homeworkCardHtml(s, answers) {
@@ -1363,29 +1367,32 @@ function homeworkCardHtml(s, answers) {
   });
 
   return `
-  <div class="hw-card">
-    <div class="hw-head">
+  <div class="hw-card" id="hwcard-${s.id}">
+    <div class="hw-head" onclick="toggleHwCard('${s.id}')">
       <div>
         <div class="hw-title">${escapeHtml(s.title)}</div>
         <div class="hw-due">Posted by ${escapeHtml(s.created_by)}${due ? ' · due ' + due : ''} · ${assignedIdx.length} of ${activeCount} assigned</div>
       </div>
+      <span class="hw-chevron">▶</span>
     </div>
 
-    ${assignedIdx.length ? assignedIdx.map(fullQuestionCard).join('') : `<div class="empty-state" style="margin-top:16px;">No one's picked a question yet — assign one from the list below.</div>`}
+    <div class="hw-body">
+      ${assignedIdx.length ? assignedIdx.map(fullQuestionCard).join('') : `<div class="empty-state" style="margin-top:16px;">No one's picked a question yet — assign one from the list below.</div>`}
 
-    ${unassignedIdx.length ? `
-      <details class="hw-unassigned">
-        <summary>Unassigned questions (${unassignedIdx.length}) — browse &amp; assign</summary>
-        <div class="hw-unassigned-body">
-          ${Object.entries(unassignedByCategory).map(([cat, idxs]) => `
-            <div class="hw-category-group">
-              <div class="hw-category-group-title">${escapeHtml(cat)}</div>
-              ${idxs.map(compactRow).join('')}
-            </div>
-          `).join('')}
-        </div>
-      </details>
-    ` : ''}
+      ${unassignedIdx.length ? `
+        <details class="hw-unassigned">
+          <summary>Unassigned questions (${unassignedIdx.length}) — browse &amp; assign</summary>
+          <div class="hw-unassigned-body">
+            ${Object.entries(unassignedByCategory).map(([cat, idxs]) => `
+              <div class="hw-category-group">
+                <div class="hw-category-group-title">${escapeHtml(cat)}</div>
+                ${idxs.map(compactRow).join('')}
+              </div>
+            `).join('')}
+          </div>
+        </details>
+      ` : ''}
+    </div>
   </div>`;
 }
 
